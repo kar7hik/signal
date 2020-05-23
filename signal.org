@@ -1,0 +1,50 @@
+
+
+
+* Understanding Speech Processing and HMM
+
+* Compiling of c user program for portaudio. [1/1]
+- [X] gcc -I/usr/include -L/usr/lib -o test paex_record.c -lrt -lasound -ljack -lpthread -lportaudio
+
+* Recording audio: [0/4]
+- [ ] Using with-audio and with-audio-stream, open the astream and record it using 
+read-stream.
+- [ ] Make an array and store the astream values in it.
+- [ ] Play the recorded audio using write-stream by accessing the array.
+- [ ] Save the recorded audio in a separate wav file.
+
+* Algorithm:
+- read-stream returns an array with the size of (* frames-per-buffer num-channels).
+  So in-order to record the audio for a known period of time, we need to make an
+  array with the size of (* sample-rate[44100] seconds[5]) => 220500.
+
+- The array returned from the read-stream needs to be written on a buffer for 
+  playback. 
+
+- write-buffer-with-raw-data functions takes care of this. 
+
+- Once the source buffer is filled with the raw audio data or the microphone input 
+  been cut off, the write-stream can access this source buffer and playback the
+  audio.
+
+* Resource Interchange File Format (RIFF)
+- "Generic file container format for storing data in tagged chunks" - Wikipedia
+- Used to store multimedia (Video and Audio)
+- Microsoft implemented their formats like AVI, ANI, WAV using RIFF.
+
+** Explanation:
+*** Chunk
+- A fragment of information which is used in many multimedia formats.
+- Each chunk contains a header which indicates some parameters. (e.g. type, comment, size)
+- In the middle, there is a variable area containing data which are decoded by the program
+  from the parameters in the header.
+
+*** Format
+- RIFF files contains entirely of "chunks".
+- 
+
+
+* Idea
+- Its too difficult to write it in wav file or any other format in common lisp.
+- Till we find the correct way to write them in the corresponding formats, let us use
+  create a file with raw audio data that can be read internally by signal modules.

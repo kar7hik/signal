@@ -1,0 +1,10 @@
+*.fasl
+*.falsl
+*.dx64fsl
+.\#*
+\#*
+*~
+*.txt
+scratchpad.lisp
+todo.org
+notes.org
