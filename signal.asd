@@ -9,15 +9,13 @@
   :license  "MIT"
   :version "0.0.1"
   :depends-on (#:iterate
-                  #:alexandria
+                #:alexandria
                 #:cl-portaudio
                 #:clgplot
-                #:bordeaux-fft
-                #:cl-wav)
+                #:bordeaux-fft)
 
   :serial t
-  :components ((:file "quickutils")
-               (:module "src"
+  :components ((:module "src"
                 :components ((:file "package")
                              (:file "global")
                              (:file "general-error")

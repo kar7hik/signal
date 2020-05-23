@@ -264,12 +264,3 @@
           (incf idx buffer-len))))))
 
 ;; (play-wav-audio "/home/karthik/quicklisp/local-projects/signal/new-mic.wav")
-
-
-
-
-
-
-
-
-

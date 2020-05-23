@@ -6,8 +6,7 @@
         #:alexandria
         #:bordeaux-fft
         #:portaudio
-        #:clgplot
-        #:wav)
+        #:clgplot)
   (:shadowing-import-from #:iterate #:terminate #:in)
   (:export #:array-to-list))
 
