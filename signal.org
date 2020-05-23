@@ -1,17 +1,14 @@
 
-
-
-* Understanding Speech Processing and HMM
+* Understanding Speech Processing
 
 * Compiling of c user program for portaudio. [1/1]
 - [X] gcc -I/usr/include -L/usr/lib -o test paex_record.c -lrt -lasound -ljack -lpthread -lportaudio
 
-* Recording audio: [0/4]
-- [ ] Using with-audio and with-audio-stream, open the astream and record it using 
-read-stream.
-- [ ] Make an array and store the astream values in it.
-- [ ] Play the recorded audio using write-stream by accessing the array.
-- [ ] Save the recorded audio in a separate wav file.
+* Recording audio: [4/4]
+- [X] Using with-audio and with-audio-stream, open the astream and record it using  read-stream.
+- [X] Make an array and store the astream values in it.
+- [X] Play the recorded audio using write-stream by accessing the array.
+- [X] Save the recorded audio in a separate wav file.
 
 * Algorithm:
 - read-stream returns an array with the size of (* frames-per-buffer num-channels).
@@ -40,11 +37,14 @@ read-stream.
   from the parameters in the header.
 
 *** Format
-- RIFF files contains entirely of "chunks".
-- 
+- RIFF files contains entirely of "chunks". 
 
+* Read/Playback WAV format: [2/2] 
+- [X] Read WAV Format
+- [X] Playback 
 
-* Idea
-- Its too difficult to write it in wav file or any other format in common lisp.
-- Till we find the correct way to write them in the corresponding formats, let us use
-  create a file with raw audio data that can be read internally by signal modules.
+* TODO MFCC
+
+* TODO Self-Organizing Map
+
+* TODO Spiking Neural Network
