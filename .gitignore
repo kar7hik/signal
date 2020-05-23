@@ -6,5 +6,5 @@
 *~
 *.txt
 scratchpad.lisp
-todo.org
-notes.org
+*.org
+
