@@ -1,6 +1,7 @@
 # signal 
 
-Self learning symbolic system for speech recognition \\
+Self learning symbolic system for speech recognition
+
 **Warning: Still under active development**
 
 ## Introduction: 
