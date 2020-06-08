@@ -67,3 +67,7 @@ If sample length is not power of 2, pads zero at the end of the sample list."
       (format t "~&required: ~A~&number of sample: ~A ~%" required-sample-length
               number-of-samples-added))
     array))
+
+
+
+

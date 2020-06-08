@@ -223,7 +223,10 @@
       ;; (save-to-file audio-filename source-buffer)
       (save-as-wav-file source-buffer audio-filename))
     (when plot-data
-      (plot-signal source-buffer plot-filename 'normal))
+      (plot-signal source-buffer plot-filename :x-label "time"
+                                               :y-label "amplitude"
+                                               :title "Recorded audio"
+                                               :signal-label "audio"))
     (when dft-analysis
       source-buffer)))
 
@@ -264,3 +267,52 @@
           (incf idx buffer-len))))))
 
 ;; (play-wav-audio "/home/karthik/quicklisp/local-projects/signal/new-mic.wav")
+
+
+;;; Wave Generate - User API
+(defun generate-wave-data (wave &key (with-time t)
+                                  (data-size +audio-buffer-size+))
+  (let* ((buffer-size nil)
+         (buffer nil))
+    (when with-time
+      (setf buffer-size (round (sample-points wave)))
+      (setf buffer (make-array buffer-size :element-type 'single-float
+                                           :initial-element 0.0))
+      (format t "~&Buffer Size: ~A" buffer-size)
+      (create-wave-samples buffer
+                           (wave-function wave)
+                           (frequency wave)
+                           (sample-interval wave)))
+    (unless with-time
+      (setf buffer (arange 0 (duration wave) :step (/ 1 (sample-rate wave))))
+      (setf buffer-size (length buffer))
+      (format t "~&Buffer Size: ~A" (array-total-size buffer))
+      (create-wave-samples buffer
+                           (wave-function wave)
+                           (frequency wave)
+                           (sample-interval wave)))
+    buffer))
+
+
+(defun create-wave (wave &key (plot-data nil) (plot-filename)
+                           (save-to-file nil) (filename nil))
+  (let ((buffer (generate-wave-data wave)))
+    (when plot-data
+      (plot-signal buffer plot-filename 'normal))
+    (when save-to-file
+      (save-as-wav-file buffer filename))))
+
+
+;;; For testing
+(defparameter *wave* (make-instance 'wave-from-function
+                                    :duration *seconds*
+                                    :frequency *frequency*
+                                    :num-channels *num-channels*))
+
+
+#+test
+(create-wave *wave*
+             :plot-data nil
+             :plot-filename "sine-example.png"
+             :save-to-file t
+             :filename "low-freq.wav")

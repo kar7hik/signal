@@ -3,10 +3,11 @@
 (defpackage #:signal
   (:use #:cl
         #:iterate
-        #:alexandria
-        #:bordeaux-fft
+        #:alexandria-2
+        ;#:bordeaux-fft
+        #:napa-fft
         #:portaudio
-        #:clgplot)
+        #:vgplot)
   (:shadowing-import-from #:iterate #:terminate #:in)
   (:export #:array-to-list))
 

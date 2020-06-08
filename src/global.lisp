@@ -40,7 +40,7 @@
 ;;; Global Variables
 (defparameter *sample-rate* 44100d0
   "Default audio sample rate.")
-(defparameter *seconds* 2
+(defparameter *seconds* 5
   "Default time period")
 (defparameter *sample-interval* 1
   "Default time interval.")

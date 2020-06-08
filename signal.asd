@@ -11,8 +11,10 @@
   :depends-on (#:iterate
                 #:alexandria
                 #:cl-portaudio
-                #:clgplot
-                #:bordeaux-fft)
+                #:vgplot
+                ;#:bordeaux-fft
+                #:napa-fft3
+                #:array-operations)
 
   :serial t
   :components ((:module "src"
@@ -20,16 +22,17 @@
                              (:file "global")
                              (:file "general-error")
                              (:file "utils")
+                             (:module signal-processing
+                              :serial t
+                              :components ((:file "signal-processing")
+                                           (:file "signal-utils")))
                              (:module audio-io
                               :serial t
                               :components ((:file "io-utils")
                                            (:file "audio-io")
-                                           (:file "feature-extraction")
-                                           (:file "wav")))
+                                           (:file "wav")
+                                           (:file "feature-extraction")))
                              (:module core
                               :serial t
                               :components ((:file "signal")))
-                             (:module signal-processing
-                              :serial t
-                              :components ((:file "signal-processing")
-                                           (:file "signal-utils")))))))
+))))

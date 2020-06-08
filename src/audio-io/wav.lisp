@@ -52,9 +52,9 @@
                               :audio-data data
                               :num-channels channels)))))
 
-#+test
-(defparameter *wav-file* (load-wav-file "/home/karthik/quicklisp/local-projects/signal/low-freq.wav" :verbose t)
-  "Loading wav file.")
+;; #+test
+;; (defparameter *wav-file* (load-wav-file "/home/karthik/quicklisp/local-projects/signal/low-freq.wav" :verbose t)
+;;   "Loading wav file.")
 
 ;;; #+test
 ;;(save-to-file "audio.txt" (audio-data *wav-file*))
@@ -67,7 +67,7 @@
          ;; Sample multiplier value taken from
          ;; https://www3.nd.edu/~dthain/courses/cse20211/fall2013/wavfile/example.c
          (bytes nil)
-         (sample-multiplier 32000))
+         (sample-multiplier 12000)) ; 3200
     (when verbose
       (format t "~&sample-size: ~A~&sample rate: ~A" (audio-sample-size header)
               (sample-rate header)))

@@ -25,53 +25,6 @@
 
 (in-package #:signal)
 
-;;; Wave Generate - User API
-(defun generate-wave-data (wave &key (with-time t)
-                                  (data-size +audio-buffer-size+))
-  (let* ((buffer-size nil)
-         (buffer nil))
-    (when with-time
-      (setf buffer-size (round (sample-points wave)))
-      (setf buffer (make-array buffer-size :element-type 'single-float
-                                           :initial-element 0.0))
-      (format t "~&Buffer Size: ~A" buffer-size)
-      (create-wave-samples buffer
-                           (wave-function wave)
-                           (frequency wave)
-                           (sample-interval wave)))
-    (unless with-time
-      (setf buffer (arange 0 (duration wave) :step (/ 1 (sample-rate wave))))
-      (setf buffer-size (length buffer))
-      (format t "~&Buffer Size: ~A" (array-total-size buffer))
-      (create-wave-samples buffer
-                           (wave-function wave)
-                           (frequency wave)
-                           (sample-interval wave)))
-    buffer))
-
-
-(defun create-wave (wave &key (plot-data nil) (plot-filename)
-                           (save-to-file nil) (filename nil))
-  (let ((buffer (generate-wave-data wave)))
-    (when plot-data
-      (plot-signal buffer plot-filename 'normal))
-    (when save-to-file
-      (save-as-wav-file buffer filename))))
-
-
-;;; For testing
-(defparameter *wave* (make-instance 'wave-from-function
-                                    :duration *seconds*
-                                    :frequency *frequency*
-                                    :num-channels *num-channels*))
-
-
-#+test
-(create-wave *wave*
-             :plot-data nil
-             :plot-filename "sine-example.png"
-             :save-to-file t
-             :filename "low-freq.wav")
 
 ;;;;;;;;;;;;;;;;;;;
 ;; DFT Analysis: ;;
@@ -88,10 +41,11 @@
                                    (audio-filename nil audio-filename-supplied)
                                    (plot-data nil)
                                    (plot-filename nil plot-filename-supplied)
-                                   (verbose nil))
+                                   (verbose nil)
+                                   (linespace '() linespace-supplied-p))
   "Core function carrying out discrete fourier transform."
   (let* ((padded-array (pad-power-of-two buffer :verbose t))
-         (raw-complex (sfft padded-array))
+         (raw-complex (napa-fft:fft padded-array))
          (freq (arange 0 (/ *sample-rate* 2)
                        :step (/ *sample-rate*
                                 (array-total-size padded-array))))
@@ -104,9 +58,10 @@
     (when save-to-file
       (save-as-wav-file buffer audio-filename))
 
-    (when plot-data
-      (plot-signal freq-magnitude plot-filename 'fft
-                   :x-sequence freq))
+    (if plot-data
+      (if linespace-supplied-p
+          (plot-signal freq plot-filename :y freq-magnitude :linespace linespace)
+          (plot-signal freq plot-filename :y freq-magnitude)))
 
     (when verbose
       (format t "~&length of data: ~A" (array-total-size buffer))
@@ -178,20 +133,14 @@
 ;; pre_emphasis = 0.97
 (defun pre-emphasis-filter (sample-array-buffer &key (alpha 0.97))
   "Takes in sample buffer."
-  (let ((pre-emphasized-samples (copy-seq sample-array-buffer)))
+  (let ((sample-len (length sample-array-buffer))
+        (preemphasized-samples (copy-seq sample-array-buffer)))
+    ;; (format t "~& Copy seq: ~A ~%" preemphasized-samples)
     (iter
-      (for idx :from 1 :to (1- (array-total-size pre-emphasized-samples)))
-      (setf (elt pre-emphasized-samples idx)
-            (- (elt pre-emphasized-samples idx)
-               (* alpha (elt pre-emphasized-samples (1- idx))))))
-    pre-emphasized-samples))
+      (for idx :from 1 :to (1- sample-len))
+      (setf (elt preemphasized-samples idx)
+            (- (elt sample-array-buffer idx)
+               (* alpha (elt sample-array-buffer (1- idx))))))
+    preemphasized-samples))
 
 
-#+test
-(pre-emphasis-filter #(5 2 3 18 6 2 37))
-
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Short Time Fourier Transform: ;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
