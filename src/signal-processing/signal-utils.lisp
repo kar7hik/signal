@@ -49,7 +49,6 @@
 (defun pad-power-of-two (sample-list &key (verbose nil))
   "Function takes in sample list, checks for power of 2.
 If sample length is not power of 2, pads zero at the end of the sample list."
-  (declare (type simple-array sample-list))
   (let* ((sample-length (array-total-size sample-list))
          (power (ceiling (log sample-length 2)))
          (required-sample-length (expt 2 power))
@@ -57,16 +56,17 @@ If sample length is not power of 2, pads zero at the end of the sample list."
                                      sample-length))
          (offset (floor (/ number-of-samples-added 2)))
          (array (make-array (list required-sample-length)
-                            :initial-element 0.0
-                            :element-type 'single-float)))
-    (setf (subseq array offset (+ sample-length offset)) sample-list)
-
+;                            :element-type 'double-float
+                            )))
+    (setf (subseq array offset (+ sample-length offset))
+          sample-list)
     ;; For verbose output:
     (when verbose
       (format t "~&sample length: ~A~&power: ~A" sample-length power)
       (format t "~&required: ~A~&number of sample: ~A ~%" required-sample-length
               number-of-samples-added))
     array))
+
 
 
 

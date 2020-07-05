@@ -118,7 +118,6 @@
       (dpb value (byte size 0) -1)
       value))
 
-
 (defun integer-to-bytes (int &key (byte-count 4))
   (let ((bytes '()))
     (dotimes (i byte-count)
@@ -176,13 +175,12 @@
     byte-array))
 
 
-
 (defun byte-array-to-int-array (byte-array bits-per-int)
   "Convert a byte array into an int array.  Requires the number of bits per int to be specified. If the number of bits is 16, then each pair of bytes forms a single 16-bit integer."
   (assert (= (mod bits-per-int 8) 0))
   (let* ((bytes-per-int (coerce (/ bits-per-int 8) 'integer))
-	 (int-array-length (/ (length byte-array) bytes-per-int))
-	 (int-array (make-array int-array-length
+         (int-array-length (/ (length byte-array) bytes-per-int))
+         (int-array (make-array int-array-length
                                 :element-type `(signed-byte ,bits-per-int))))
     (iter
       (for int-offset from 0 below int-array-length)
@@ -224,27 +222,10 @@
           (funcall wave-function
                    (coerce (* +tau+
                               frequency
-                              (* i time-step)) 'single-float)))
+                              (* i time-step)) 'single-float))))
     ;; (format t "~&Sampling interval (Ts): ~f" (/ i sample-rate))
-    )
+    
   buffer)
-
-
-(defun arange (start stop &key (step 1))
-  "Creates an array for given start and stop conditions.
-default step value is 1."
-  (cond ((< stop start) (error "Start value must be larger than Stop value"))
-        (t (let ((arr (make-array (truncate (/ stop step)))))
-             (iter
-               (for i :index-of-vector arr)
-               (setf (aref arr i) (* i step)))
-             arr))))
-
-
-(defun create-file-path (filename)
-  "Creates a file path from the filename."
-  (merge-pathnames filename
-                   *current-directory*))
 
 
 (defun print-data (samples)
@@ -264,3 +245,39 @@ default step value is 1."
     (iter
       (for sample in-sequence samples)
       (format fstream "~&~A" sample))))
+
+
+
+(defun chunk-audio-data (audio seconds)
+  "Returns the chunk of audio data seconds."
+  (let* ((audio-data (audio-data audio))
+         (audio-len (length audio-data))
+         (sample-rate (sample-rate audio))
+         (chunk-len (* sample-rate seconds)))
+    (if (>= chunk-len audio-len)
+        (progn
+          (format t "~&Cannot snip the audio; The audio size is less than the required time seconds. Returning the original audio.~%")
+          audio-data)
+        (let ((chunk-audio (make-array (ceiling chunk-len) :element-type 'single-float)))
+          (print (length chunk-audio))
+          (iter
+            (for i :from 0 :below chunk-len)
+            (setf (aref chunk-audio i)
+                  (aref audio-data i)))
+          chunk-audio))))
+
+;; (defparameter *snip*
+;;   (chunk-audio-data *wav* 6.0))
+;; (save-to-file "snip.txt" *snip*)
+
+
+
+(defun fill-value (dimensions value &key (type 'integer))
+  "Fills the value to the dimensions with the specified type."
+  (make-array dimensions
+              :element-type type
+              :initial-element value))
+
+(defun zeros (dimensions &key (type 'integer))
+  "Returns zeros of dimensions with the specified type."
+  (fill-value dimensions (coerce 0 type) :type type))

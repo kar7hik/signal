@@ -25,3 +25,23 @@
 
 (in-package #:signal)
 
+
+(defun range-helper (start stop step)
+  (iter
+    (for i :from start :to stop :by step)
+    (collect i)))
+
+
+(defun range (start &key (stop nil stop-supplied-p) (step 1))
+  "Creates an array for given start and stop conditions. default step value is 1. The resulting array will be the type of step."
+  (if stop-supplied-p
+      (range-helper start stop step)
+      (range-helper 0 start step)))
+
+
+(defun create-file-path (filename)
+  "Creates a file path from the filename."
+  (merge-pathnames filename
+                   *current-directory*))
+
+    

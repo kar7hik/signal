@@ -38,19 +38,20 @@
 ;; del_R = f_s / N_fft
 ;;
 (defun dft-analysis-core (buffer &key (save-to-file nil)
-                                   (audio-filename nil audio-filename-supplied)
+                                   (audio-filename nil)
                                    (plot-data nil)
-                                   (plot-filename nil plot-filename-supplied)
+                                   (plot-filename nil)
                                    (verbose nil)
                                    (linespace '() linespace-supplied-p))
   "Core function carrying out discrete fourier transform."
-  (let* ((padded-array (pad-power-of-two buffer :verbose t))
-         (raw-complex (napa-fft:fft padded-array))
-         (freq (arange 0 (/ *sample-rate* 2)
-                       :step (/ *sample-rate*
+  (let* ((padded-array (pad-power-of-two buffer :verbose verbose))
+         (raw-complex (napa-fft:rfft padded-array))
+         (freq (range 0 :stop (/ *sample-rate* 2)
+                        :step (/ *sample-rate*
                                 (array-total-size padded-array))))
          (freq-magnitude (make-array (/ (array-total-size padded-array) 2)
-                                     :element-type 'double-float)))
+;                                     :element-type 'double-float
+                                     )))
     (iter
       (for i :index-of-vector freq-magnitude)
       (setf (aref freq-magnitude i) (abs (aref raw-complex i))))
@@ -61,14 +62,13 @@
     (if plot-data
       (if linespace-supplied-p
           (plot-signal freq plot-filename :y freq-magnitude :linespace linespace)
-          (plot-signal freq plot-filename :y freq-magnitude)))
+          (plot-signal freq-magnitude plot-filename)))
 
     (when verbose
       (format t "~&length of data: ~A" (array-total-size buffer))
       (format t "~&length of padded array: ~A" (array-total-size padded-array))
-      (format t "~&length of freq: ~A" (array-total-size freq))
       (format t "~&length of freq magnitude: ~A" (array-total-size freq-magnitude)))
-    ))
+    freq-magnitude))
 
 
 (defun dft-analysis-generated-wave (duration &key (save-to-file nil)
@@ -137,10 +137,10 @@
         (preemphasized-samples (copy-seq sample-array-buffer)))
     ;; (format t "~& Copy seq: ~A ~%" preemphasized-samples)
     (iter
-      (for idx :from 1 :to (1- sample-len))
-      (setf (elt preemphasized-samples idx)
-            (- (elt sample-array-buffer idx)
-               (* alpha (elt sample-array-buffer (1- idx))))))
+     (for idx :from 1 :to (1- sample-len))
+     (setf (elt preemphasized-samples idx)
+           (- (elt sample-array-buffer idx)
+              (* alpha (elt sample-array-buffer (1- idx))))))
     preemphasized-samples))
 
 
