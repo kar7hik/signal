@@ -22,7 +22,7 @@ def read_data_from_file(filename):
 
 filename = '/home/karthik/quicklisp/local-projects/signal/low-freq.wav'
 sample_rate, signal = scipy.io.wavfile.read(filename)
-signal = signal[0:int(1.0 * sample_rate)]  # Keep the first 3.5 seconds
+signal = signal[0:int(1.0 * sample_rate)]  # Keep the first 1.0 seconds
 
 pre_emphasis = 0.97
 emphasized_signal = numpy.append(signal[0], signal[1:] - pre_emphasis * signal[:-1])
@@ -43,9 +43,11 @@ pad_signal = numpy.append(emphasized_signal, z) # Pad Signal to make sure that a
 
 indices = numpy.tile(numpy.arange(0, frame_length), (num_frames, 1)) + numpy.tile(numpy.arange(0, num_frames * frame_step, frame_step), (frame_length, 1)).T
 frames = pad_signal[indices.astype(numpy.int32, copy=False)]
+print(frames[0])
 # print(len(frames))
 
 frames *= numpy.hamming(frame_length)
+print(frames[0])
 
 NFFT = 1024
 mag_frames = numpy.absolute(numpy.fft.rfft(frames, NFFT))  # Magnitude of the FFT
@@ -108,3 +110,18 @@ mel_filter_num = 10
 
 print("Minimum frequency: {0}".format(freq_min))
 print("Maximum frequency: {0}".format(freq_high))
+
+num_ceps = 12
+# Keep 2-13
+mfcc = dct(filter_banks, type=2, axis=1, norm='ortho')[:, 1:(num_ceps + 1)]
+
+# cep_lifter = 22
+
+# (nframes, ncoeff) = mfcc.shape
+# print(nframes)
+# print(ncoeff)
+
+# n = numpy.arange(ncoeff)
+# lift = 1 + (cep_lifter / 2) * numpy.sin(numpy.pi * n / cep_lifter)
+
+# mfcc *= lift

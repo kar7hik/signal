@@ -55,7 +55,6 @@
 ;; #+test
 ;; (defparameter *wav-file* (load-wav-file "/home/karthik/quicklisp/local-projects/signal/low-freq.wav" :verbose t)
 ;;   "Loading wav file.")
-
 ;;; #+test
 ;;(save-to-file "audio.txt" (audio-data *wav-file*))
 

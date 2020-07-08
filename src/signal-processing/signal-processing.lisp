@@ -49,8 +49,8 @@
          (freq (range 0 :stop (/ *sample-rate* 2)
                         :step (/ *sample-rate*
                                 (array-total-size padded-array))))
-         (freq-magnitude (make-array (/ (array-total-size padded-array) 2)
-;                                     :element-type 'double-float
+         (freq-magnitude (make-array  (/ (array-total-size padded-array) 2)
+                                     ;;:element-type 'double-float
                                      )))
     (iter
       (for i :index-of-vector freq-magnitude)
@@ -70,6 +70,8 @@
       (format t "~&length of freq magnitude: ~A" (array-total-size freq-magnitude)))
     freq-magnitude))
 
+
+;; (dft-analysis-core #(0.2 0.8 9 3 2 3 65 1 3 8 98) :verbose t)
 
 (defun dft-analysis-generated-wave (duration &key (save-to-file nil)
                                            (audio-filename nil audio-filename-supplied)

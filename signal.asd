@@ -14,7 +14,8 @@
                 #:vgplot
                 ;#:bordeaux-fft
                 #:napa-fft3
-                #:array-operations)
+                #:array-operations
+                #:dct)
 
   :serial t
   :components ((:module "src"

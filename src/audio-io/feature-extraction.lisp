@@ -51,9 +51,9 @@
                :accessor fft-result
                :documentation "List of simple arrays containing the result of FFT.")
    (pow-spectrum :initarg :pow-spectrum
-                   :type (simple-array single-float)
-                   :accessor pow-spectrum
-                   :documentation "List of simple arrays - power spectrum values of fft-results."))
+                 :accessor pow-spectrum
+                 :type 'list
+                 :documentation "List of simple arrays - power spectrum values of fft-results."))
   (:documentation "Fourier Transform Class."))
 
 
@@ -199,17 +199,21 @@
       (for i :from 0 :below frame-len)
       (setf (aref filtered-frame i)
             (* (funcall filter-function i frame-len)
-               (aref frame i))))
+               (aref frame i)))
+      ;;(format t "~&filtered frame: ~A" (aref filtered-frame i))
+      )
     filtered-frame))
 
+;; (apply-filter-to-frame (elt (splitted-frames *sig-obj*) 0))
 
-(defun apply-filter-to-audio (audio-data &key (filter-function 'hamming))
+
+(defun apply-filter-to-audio (splitted-frames &key (filter-function 'hamming))
   (let ((filtered-audio '()))
     (iter
-      (for i :from 0 :below (length audio-data))
-      (push (apply-filter-to-frame (elt audio-data i) :filter-function filter-function)
+      (for i :from 0 :below (length splitted-frames))
+      (push (apply-filter-to-frame (elt splitted-frames i) :filter-function filter-function)
             filtered-audio))
-    filtered-audio))
+    (nreverse filtered-audio)))
 
 
 
@@ -217,18 +221,21 @@
   "Given a frame, this function applies FFT to it."
   (alexandria:with-gensyms (fft-result)
     (setf fft-result
-          (dft-analysis-core (pad-power-of-two frame)))))
+          (dft-analysis-core (pad-power-of-two frame)))
+    fft-result))
 
 
-(defun apply-fft-to-audio (splitted-audio-data)
+(defun apply-fft-to-audio (filtered-audio-data)
   "Given a audio-data, the function returns the FFT of the it."
-  (let ((fft-result '())
-        (total-num-frames (length splitted-audio-data)))
-    ;; (format t "~& total-num-frames: ~A ~%" total-num-frames)
+  (let ((fft-result nil)
+        (total-num-frames (length filtered-audio-data)))
+    ;;(format t "~& total-num-frames: ~A ~%" total-num-frames)
+    ;;(format t "~& len filtered audio: ~A ~%" (length (first filtered-audio-data)))
     (iter
       (for i :from 0 :below total-num-frames)
-      (push (apply-fft-to-frame (elt splitted-audio-data i))
+      (push (apply-fft-to-frame (elt filtered-audio-data i))
             fft-result))
+    ;;(format t "~& length of fft-result: ~A~%" (length (first fft-result)))
     (nreverse fft-result)))
 
 
@@ -243,7 +250,7 @@
   "Given the frames, the function returns the Power spectrum."
   (iter
     (for frame :in-sequence frames)
-    (collect (power-spectrum frame NFFT) result-type 'vector)))
+    (collect (power-spectrum frame NFFT))))
 
 
 (defgeneric pre-emphasis-audio-data (signal-processing-obj)
@@ -251,8 +258,7 @@
 
 (defmethod pre-emphasis-audio-data ((signal-processing-obj signal-processing))
   (setf (emphasized-signal signal-processing-obj)
-        (pre-emphasis-filter (audio-data signal-processing-obj)))
-  'SUCCESS)
+        (pre-emphasis-filter (audio-data signal-processing-obj))))
 
 (defgeneric pad-audio-with-zeros (signal-processing-obj)
   (:documentation "Finds the required padding for the audio signal and pads the zeros."))
@@ -266,7 +272,7 @@
 
 (defmethod save-fft ((signal-processing-obj signal-processing))
   (setf (fft-result signal-processing-obj)
-        (apply-fft-to-audio (splitted-frames signal-processing-obj))))
+        (apply-fft-to-audio (filtered-frames signal-processing-obj))))
 
 
 (defmethod find-power-spectrum ((signal-processing-obj signal-processing))
@@ -366,17 +372,17 @@ window-len - length of the filter window"
   (aops:linspace min-freq (frequency-to-mel-scale max-freq) n-fbank))
 
 
-(defun mel->frequency-sequence (lst)
+(defun mel->frequency-sequence (seq)
   "Returns the list of frequency values corresponding to Mel scale."
   (iter
-    (for i in-sequence lst)
+    (for i in-sequence seq)
     (collect (mel-scale-to-frequency i) result-type 'vector)))
 
 
-(defun frequency-bin (lst &key (nfft *nfft*) (sample-rate *sample-rate*))
+(defun frequency-bin (seq &key (nfft *nfft*) (sample-rate *sample-rate*))
   "Returns the bin containing frequencies."
   (iter
-    (for elt in-sequence lst)
+    (for elt in-sequence seq)
     (collect (floor (/ (* (1+ nfft)
                           elt)
                        sample-rate)) result-type 'vector)))
@@ -401,9 +407,6 @@ window-len - length of the filter window"
     (collect elt result-type 'vector)))
 
 
-(defparameter *bin* (frequency-bin (mel->frequency-sequence (fbank 0 22050 42))))
-
-
 (defun dot-product (a b)
   "Function returns the dot-product of the input sequences."
   ;; (declare (optimize (speed 3))
@@ -425,26 +428,117 @@ window-len - length of the filter window"
         (for i :from start :below (length out))
         (for j :in-sequence fbank)
         (setf (aref out i) j))
-      (collect out result-type 'vector))))
+      (collect out))))
 
 
+
+(defun list-to-2d-array (list)
+  (make-array (list (length list)
+                    (length (first list)))
+              :initial-contents list))
+
+
+(defun get-row (arr)
+  (car (array-dimensions arr)))
+
+(defun get-col (arr)
+  (cadr (array-dimensions arr)))
+
+
+(defun transpose (arr)
+  (let* ((row (get-row arr))
+         (col (get-col arr))
+         (tran (make-array (list col row))))
+    (iter
+      (for i :from 0 :below row)
+      (iter
+        (for j :from 0 :below col)
+        (setf (aref tran j i)
+              (aref arr i j))))
+    tran))
+
+
+(defun matrix-multiplication (A B)
+  (let* ((m (car (array-dimensions A)))
+         (n (cadr (array-dimensions A)))
+         (l (cadr (array-dimensions B)))
+         (out (make-array `(,m ,l) :initial-element 0)))
+    (iter
+      (for i :from 0 :below m)
+      (iter
+        (for k :from 0 :below l)
+        (setf (aref out i k)
+              (iter
+                (for j :from 0 :below n)
+                (sum (* (aref A i j)
+                        (aref B j k)))))))
+    out))
+
+(defun log-mel-features (filter-banks)
+  "Applies log to the filter bank values."
+  (with-gensyms (log-banks)
+    (let ((row (get-row filter-banks))
+          (col (get-col filter-banks)))
+      (setf log-banks (make-array `(,row ,col) :element-type 'double-float
+                                               :initial-element 0d0))
+      (iter
+        (for i :from 0 :below row)
+        (iter
+          (for j :from 0 :below col)
+          (setf (aref log-banks i j)
+                (* 20
+                   (log (aref filter-banks i j) 10)))))
+      log-banks)))
+
+
+(defun apply-dct-mel-features (log-filter-banks)
+  "Applies DCT-II on the filter banks and returns only the -filter-num- values."
+  (let ((row (get-row log-filter-banks)))
+    (iter
+      (for i :from 0 :below row)
+      (collect (dct:dct (aops:sub log-filter-banks i)) result-type 'vector))))
+
+
+(defun dct-mel-features (log-filter-banks num-cepstrum)
+  (let ((row (get-row log-filter-banks))
+        (filter-banks (aops:combine log-filter-banks)))
+    (iter
+      (for i :from 0 :below row)
+      (collect (aops:subvec (aops:sub filter-banks i) 1 (1+ num-cepstrum)) result-type 'vector))))
+
+
+(defparameter *bin* (frequency-bin (mel->frequency-sequence (fbank 0 22050 42))))
 (defparameter *data* (filter-banks (coerce-sequence *bin* 'single-float)))
+(defparameter *arr* (list-to-2d-array *data*))
+(defparameter *tra* (transpose *arr*))
+
+(defparameter *arr1* (list-to-2d-array (pow-spectrum *sig-obj*)))
+(defparameter *final* (matrix-multiplication *arr1* *tra*))
+(defparameter *log-res* (log-mel-features *final*))
+(defparameter *dct-res* (apply-dct-mel-features *log-res*))
+(defparameter *dct-final* (aops:combine (dct-mel-features *dct-res* 12)))
+(defparameter *mag* (list-to-2d-array (fft-result *sig-obj*)))
+(defparameter *split* (splitted-frames *sig-obj*))
+(defparameter *filt* (list-to-2d-array (filtered-frames *sig-obj*)))
+(defparameter *emp* (emphasized-signal *sig-obj*))
+(defparameter *pad* (padded-frames *sig-obj*))
+(aops:sub *filt* 0)
+
+(length (first (pow-spectrum *sig-obj*)))
+(length (first (filtered-frames *sig-obj*)))
+(length (first (splitted-frames *sig-obj*)))
+(length (first (fft-result *sig-obj*)))
+(length (padded-frames *sig-obj*))
+(array-dimensions *arr1*)
+(array-dimensions *arr*)
+(length (first *data*))
+(setf a '(1 2 3 4 5 6))
+
+(defun apply-log (seq &key (base 10) (multiplier 1))
+  (iter
+    (for elt :in-sequence seq)
+    (collect (* multiplier
+                (log elt base)))))
 
 
-
-#+test
-(iter
-  (for i :from 0 :below (length *data*))
-  (vgplot:plot (nth i *data*))
-  (sleep 0.1))
-
-;; (save-to-file "pow.txt" (pow-spectrum *sig-obj*))
-
-(defun rotate-1 (list-of-lists)
-  (apply #'mapcar #'list list-of-lists))
-
-;; (defun list-to-2d-array (list)
-;;   (make-array (list (length list)
-;;                     (length (first list)))
-;;               :initial-contents list))
-
+(apply-log a :multiplier 20)
