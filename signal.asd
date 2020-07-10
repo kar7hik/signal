@@ -15,7 +15,8 @@
                 ;#:bordeaux-fft
                 #:napa-fft3
                 #:array-operations
-                #:dct)
+                #:dct
+                )
 
   :serial t
   :components ((:module "src"

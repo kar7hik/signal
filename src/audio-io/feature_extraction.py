@@ -20,12 +20,15 @@ def read_data_from_file(filename):
     return lines
 
 
-filename = '/home/karthik/quicklisp/local-projects/signal/low-freq.wav'
+filename = '/home/karthik/quicklisp/local-projects/signal/music-stereo.wav'
 sample_rate, signal = scipy.io.wavfile.read(filename)
-signal = signal[0:int(1.0 * sample_rate)]  # Keep the first 1.0 seconds
-
+signal = signal.reshape(-1, 1)
+write_data_to_file(signal, "audio-1.txt")
+#signal = signal[0:int(2.0 * sample_rate)]  # Keep the first 1.0 seconds
+print("signal: {}" . format(len(signal)))
 pre_emphasis = 0.97
 emphasized_signal = numpy.append(signal[0], signal[1:] - pre_emphasis * signal[:-1])
+print("emphasized signal: {}" . format(len(emphasized_signal)))
 
 
 frame_size = 0.020
@@ -43,27 +46,16 @@ pad_signal = numpy.append(emphasized_signal, z) # Pad Signal to make sure that a
 
 indices = numpy.tile(numpy.arange(0, frame_length), (num_frames, 1)) + numpy.tile(numpy.arange(0, num_frames * frame_step, frame_step), (frame_length, 1)).T
 frames = pad_signal[indices.astype(numpy.int32, copy=False)]
-print(frames[0])
-# print(len(frames))
 
 frames *= numpy.hamming(frame_length)
-print(frames[0])
+# print(frames[0])
 
 NFFT = 1024
 mag_frames = numpy.absolute(numpy.fft.rfft(frames, NFFT))  # Magnitude of the FFT
 pow_frames = ((1.0 / NFFT) * ((mag_frames) ** 2))
 
-print("mag_frames shape: {}".format(numpy.shape(mag_frames)))
-# write_data_to_file(mag_frames[56], 'result.txt')
-# plt.plot(pow_frames[2])
-# plt.show()
+# print("mag_frames shape: {}".format(numpy.shape(mag_frames)))
 
-# plt.plot(frames[2])
-# plt.show()
-
-# reverse = numpy.absolute(numpy.fft.ifft(mag_frames, NFFT))
-# plt.plot(reverse[2])
-# plt.show()
 nfilt = 40
 low_freq_mel = 0
 high_freq_mel = (2595 * numpy.log10(1 + (sample_rate / 2) / 700))  # Hz to Mel
@@ -72,8 +64,8 @@ hz_points = (700 * (10**(mel_points / 2595) - 1))  # Convert Mel to Hz
 bin = numpy.floor((NFFT + 1) * hz_points / sample_rate)
 
 fbank = numpy.zeros((nfilt, int(numpy.floor(NFFT / 2 + 1))))
-print("fbank shape: {}".format(numpy.shape(fbank)))
-print("pow_frames shape: {}".format(numpy.shape(pow_frames)))
+# print("fbank shape: {}".format(numpy.shape(fbank)))
+# print("pow_frames shape: {}".format(numpy.shape(pow_frames)))
 
 for m in range(1, nfilt + 1):
     f_m_minus = int(bin[m - 1])   # left
@@ -94,34 +86,43 @@ filter_banks = numpy.where(filter_banks == 0, numpy.finfo(float).eps, filter_ban
 
 filter_banks = 20 * numpy.log10(filter_banks)  # dB
 
-print("hz_points: {}".format(hz_points))
-print("mel_points: {}".format(mel_points))
+# print("hz_points: {}".format(hz_points))
+# print("mel_points: {}".format(mel_points))
 
-print("hz_points_len: {}".format(len(hz_points)))
-print("mel_points_len: {}".format(len(mel_points)))
+# print("hz_points_len: {}".format(len(hz_points)))
+# print("mel_points_len: {}".format(len(mel_points)))
 
 
 # print(sample_rate)
-print("bin: {}".format(bin))
-print("filter_banks: {}".format(filter_banks))
+# print("bin: {}".format(bin))
+# print("filter_banks: {}".format(filter_banks))
 freq_min = 0
 freq_high = sample_rate / 2
 mel_filter_num = 10
 
-print("Minimum frequency: {0}".format(freq_min))
-print("Maximum frequency: {0}".format(freq_high))
+# print("Minimum frequency: {0}".format(freq_min))
+# print("Maximum frequency: {0}".format(freq_high))
 
 num_ceps = 12
 # Keep 2-13
 mfcc = dct(filter_banks, type=2, axis=1, norm='ortho')[:, 1:(num_ceps + 1)]
+print(mfcc[0])
 
 # cep_lifter = 22
 
 # (nframes, ncoeff) = mfcc.shape
-# print(nframes)
-# print(ncoeff)
-
 # n = numpy.arange(ncoeff)
 # lift = 1 + (cep_lifter / 2) * numpy.sin(numpy.pi * n / cep_lifter)
 
 # mfcc *= lift
+# filter_banks -= (numpy.mean(filter_banks, axis=0) + 1e-8)
+# mfcc -= (numpy.mean(mfcc, axis=0) + 1e-8)
+
+# plt.subplot(312)
+# filter_banks -= (numpy.mean(filter_banks, axis=0) + 1e-8)
+# plt.imshow(filter_banks.T, cmap=plt.cm.jet, aspect='auto')
+# plt.xticks(numpy.arange(0, (filter_banks.T).shape[1], int((filter_banks.T).shape[1] / 7)), ['0s', '0.5s', '1s', '1.5s', '2.5s', '3s', '3.5'])
+# ax = plt.gca()
+# ax.invert_yaxis()
+# plt.title('the spectrum image')
+# plt.show()

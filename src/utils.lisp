@@ -45,3 +45,9 @@
                    *current-directory*))
 
     
+
+(defun coerce-sequence (seq conversion-type)
+  (iter
+    (for elt :in-sequence seq)
+    (alexandria:coercef elt conversion-type)
+    (collect elt result-type 'vector)))

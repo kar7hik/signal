@@ -126,6 +126,7 @@
     (nreverse bytes)))
 
 
+
 (defun bytes-to-integer (byte-array &optional swap-endianness)
   "Converts an array of bytes to an integer.  MUST BE LITTLE-ENDIAN!!"
   (when swap-endianness
@@ -175,6 +176,7 @@
     byte-array))
 
 
+
 (defun byte-array-to-int-array (byte-array bits-per-int)
   "Convert a byte array into an int array.  Requires the number of bits per int to be specified. If the number of bits is 16, then each pair of bytes forms a single 16-bit integer."
   (assert (= (mod bits-per-int 8) 0))
@@ -182,6 +184,7 @@
          (int-array-length (/ (length byte-array) bytes-per-int))
          (int-array (make-array int-array-length
                                 :element-type `(signed-byte ,bits-per-int))))
+    (format t "~20A:~10D~%" "bytes-per-int" bytes-per-int)
     (iter
       (for int-offset from 0 below int-array-length)
       (for byte-offset = (* bytes-per-int int-offset))
@@ -191,7 +194,10 @@
               (subseq byte-array byte-offset
                       (+ byte-offset bytes-per-int)))
              bits-per-int)))
+    (format t "~20A: ~10d~%" "int-array shape" (array-dimensions int-array))    
     int-array))
+
+
 
 (defun plot-signal (x filename &key (y nil y-supplied-p)
                                  (signal-label ";signal;")
@@ -259,7 +265,7 @@
           (format t "~&Cannot snip the audio; The audio size is less than the required time seconds. Returning the original audio.~%")
           audio-data)
         (let ((chunk-audio (make-array (ceiling chunk-len) :element-type 'single-float)))
-          (print (length chunk-audio))
+          (format t "~20A: ~10d~%" "length chunk audio" (ceiling chunk-len))
           (iter
             (for i :from 0 :below chunk-len)
             (setf (aref chunk-audio i)

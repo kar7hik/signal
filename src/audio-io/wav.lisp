@@ -28,11 +28,12 @@
 	  ;; If it's not PCM there may be more here....  Specifically:.. 2   ExtraParamSize   if PCM, then doesn't exist;  X   ExtraParams      space for extra parameters
 	  (data-size (bytes-to-integer (subseq bytes 40 44)))
 	  (data (subseq bytes 44)))
-      (declare (ignore subchunk2-size data-size))
+      (declare (ignore subchunk2-size))
       (when verbose
 	(format t "~20A: ~10d~%" "Audio format" audio-format)
 	(format t "~20A: ~10d~%" "Channels" channels)
 	(format t "~20A: ~10d~%" "Sample rate" sample-rate)
+        (format t "~20A: ~10d~%" "Data length" (length data))
 	(format t "~20A: ~10d~%" "Byte rate" byte-rate)
 	(format t "~20A: ~10d~%" "Bits per sample" bits-per-sample)
 	(force-output t))
@@ -43,13 +44,16 @@
       ;; Beginning of SubChunk2...
       (assert (equal (map 'string 'code-char (subseq bytes 36 40)) "data"))
       ;; If it's not 8-bit data, make the array into a *sample* array, not a *byte* array
+      (format t "~20A: ~10d~%" "xx-audio-data" (array-dimensions data))
       (setf data (byte-array-to-int-array data bits-per-sample))
       (let* ((divisor (expt 2 (1- bits-per-sample))))
-	(setf data (map 'vector (lambda (x) (coerce (/ x divisor) 'single-float)) data))
+	;;(setf data (map 'vector (lambda (x) (coerce (/ x divisor) 'single-float)) data))
+        (format t "~20A: ~10d~%" "xx-audio-data" (array-dimensions data))
         (make-audio-from-file :duration (float (/ (length data) byte-rate))
                               :sample-rate (coerce sample-rate 'double-float)
                               :bits-per-sample bits-per-sample
-                              :audio-data data
+                              :audio-data (coerce-sequence data 'single-float)
+                              :total-audio-data-size data-size
                               :num-channels channels)))))
 
 ;; #+test
@@ -59,9 +63,13 @@
 ;;(save-to-file "audio.txt" (audio-data *wav-file*))
 
 ;;; Save sample data as Wav file.
-(defun save-as-wav-file (sample-data filename &key (verbose nil))
+(defun save-as-wav-file (sample-data filename &key (verbose nil)
+                                                (sample-rate *sample-rate*)
+                                                (num-channels *num-channels*))
   "Creates a Wav file"
-  (let* ((header (make-wave-header (length sample-data)))
+  (let* ((header (make-wave-header (length sample-data)
+                                   :sample-rate sample-rate
+                                   :num-channels num-channels))
          (file (create-file-path filename))
          ;; Sample multiplier value taken from
          ;; https://www3.nd.edu/~dthain/courses/cse20211/fall2013/wavfile/example.c

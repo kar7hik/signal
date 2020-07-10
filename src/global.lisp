@@ -44,7 +44,7 @@
   "Default time period")
 (defparameter *sample-interval* 1
   "Default time interval.")
-(defparameter *num-channels* 1
+(defparameter *num-channels* 2
   "Default number of channels.")
 (defparameter *frequency* 440
   "Default tone frequency.")

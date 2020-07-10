@@ -100,8 +100,11 @@
 
 
 ;;; Constructor
-(defun make-wave-header (sample-size)
-  (make-instance 'wave-header :audio-sample-size sample-size :sample-rate 44100))
+(defun make-wave-header (sample-size &key (sample-rate *sample-rate*)
+                                       (num-channels *num-channels*))
+  (make-instance 'wave-header :audio-sample-size sample-size
+                              :sample-rate sample-rate
+                              :num-channels num-channels))
 
 
 ;;; Initialization
@@ -134,15 +137,19 @@
 ;;;; Audio from a file. Inherits from wave-signal.
 (defclass audio-from-file (wave-header) 
   ((audio-data :initarg :audio-data
-               :accessor audio-data))
+               :accessor audio-data)
+   (total-audio-data-size :initarg :total-audio-data-size
+                          :accessor total-audio-data-size))
   (:documentation "Audio signal from a file."))
 
-(defun make-audio-from-file (&key duration sample-rate bits-per-sample audio-data num-channels)
+(defun make-audio-from-file (&key duration sample-rate bits-per-sample audio-data total-audio-data-size num-channels)
   "Constructor function for the class audio from file."
+  (format t "~20A: ~10d~%" "sample audio-data" (array-dimensions audio-data))
   (make-instance 'audio-from-file :duration duration
                                   :sample-rate sample-rate
                                   :bits-per-sample bits-per-sample
                                   :audio-data audio-data
+                                  :total-audio-data-size total-audio-data-size
                                   :num-channels num-channels))
 
 
@@ -257,6 +264,9 @@
                                   :sample-rate (sample-rate wav-file)
                                   :frames-per-buffer (audio-buffer-size wav-file))
         (format t "~& <<< Starting Playback >>> ~%")
+        (format t "~& ~20A: ~20A ~%" "audio-size" total-audio-data-size)
+        (format t "~& ~20A: ~20A ~%" "num-channels" (num-channels wav-file))
+        
         (iter
           (while (< idx total-audio-data-size))
           (fill-buffer buffer

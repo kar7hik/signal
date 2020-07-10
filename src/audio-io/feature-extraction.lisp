@@ -34,6 +34,12 @@
 (defparameter *NFFT* 1024
   "FFT bin value.")
 
+(defparameter *num-filters* 40
+  "Number of Filter bank.")
+
+(defparameter *num-cepstrum* 12
+  "Number of Cepstrum.")
+
 
 (defclass fourier-transform ()
   ((fft-applied-p :initarg :fft-applied-p
@@ -108,6 +114,36 @@
   (:documentation "Signal processing Class"))
 
 
+(defclass mfcc (signal-processing)
+  ((num-filters :initarg :num-filters
+                :initform *num-filters*
+                :accessor num-filters)
+   (bins :initarg :bins
+         :accessor bins)
+   (num-cepstrum :initarg :num-cepstrum
+                 :initform *num-cepstrum*
+                 :accessor num-cepstrum)
+   (min-freq :initarg :min-freq
+             :initform 0.0
+             :accessor min-freq
+             :type 'single-float)
+   (max-freq :initarg :max-freq
+             :initform 0.0
+             :accessor max-freq
+             :type 'single-float)
+   (filter-banks :initarg :filter-banks
+                 :accessor filter-banks)
+   (raw-mel-features :initarg :raw-mel-features
+                     :accessor raw-mel-features)
+   (log-mel-features :initarg :log-mel-features
+                     :accessor log-mel-features)
+   (dct-mel-values :initarg :dct-mel-values
+                   :accessor dct-mel-values)
+   (reduced-mel-values :initarg :reduced-mel-values
+                       :accessor reduced-mel-values))  
+  (:documentation "MFCC Class"))
+
+
 (defun find-frame-length (sample-rate frame-size)
   "Function returns the frame length. Convert from seconds to samples"
   (round (* frame-size sample-rate)))
@@ -127,10 +163,11 @@
                          (frame-stride signal-processing-obj)))
   (setf (audio-length signal-processing-obj)
         (length (audio-data signal-processing-obj)))
+  (pre-emphasis-audio-data signal-processing-obj)
   (setf (total-number-of-frames signal-processing-obj)
-        (abs (ceiling (float (/ (abs (- (audio-length signal-processing-obj)
-                                        (frame-length signal-processing-obj)))
-                                (frame-step signal-processing-obj))))))
+        (ceiling (float (/ (abs (- (audio-length signal-processing-obj)
+                                   (frame-length signal-processing-obj)))
+                           (frame-step signal-processing-obj)))))
   (setf (pad-audio-length signal-processing-obj)
         (+ (* (total-number-of-frames signal-processing-obj)
               (frame-step signal-processing-obj))
@@ -138,7 +175,6 @@
   (setf (padding-required signal-processing-obj)
         (- (pad-audio-length signal-processing-obj)
            (audio-length signal-processing-obj)))
-  (pre-emphasis-audio-data signal-processing-obj)
   (pad-audio-with-zeros signal-processing-obj)
   (setf (splitted-frames signal-processing-obj)
         (split-audio-into-frames (padded-frames signal-processing-obj)
@@ -148,9 +184,45 @@
   (setf (filtered-frames signal-processing-obj)
         (apply-filter-to-audio (splitted-frames signal-processing-obj)))
   (save-fft signal-processing-obj)
-  (find-power-spectrum signal-processing-obj)
-  )
+  (find-power-spectrum signal-processing-obj))
 
+
+(defmethod initialize-instance :after ((mfcc-obj mfcc) &key)
+  (setf (max-freq mfcc-obj)
+        (floor (/ (sample-rate mfcc-obj)
+                  2.0)))
+  (find-frequency-bins mfcc-obj)
+  (find-filter-banks mfcc-obj)
+  (find-log-mel-features mfcc-obj)
+  (find-dct-mel-features mfcc-obj))
+
+
+(defun find-frequency-bins (mfcc-obj)
+  (setf (bins mfcc-obj)
+        (coerce-sequence (get-frequency-bin (mel->frequency-sequence (fbank (min-freq mfcc-obj)
+                                                                            (max-freq mfcc-obj)
+                                                                            (+ 2 (num-filters mfcc-obj)))))
+                         'single-float)))
+
+
+(defun find-filter-banks (mfcc-obj)
+  (setf (filter-banks mfcc-obj)
+        (list-to-2d-array (get-filter-banks (bins mfcc-obj)))))
+
+
+(defun find-log-mel-features (mfcc-obj)
+  (let* ((raw-mult (matrix-multiplication (list-to-2d-array (pow-spectrum mfcc-obj))
+                                          (transpose (filter-banks mfcc-obj))))
+         (log-mel (get-log-mel-features raw-mult)))
+    (setf (raw-mel-features mfcc-obj) raw-mult
+          (log-mel-features mfcc-obj) log-mel)))
+
+
+(defun find-dct-mel-features (mfcc-obj)
+  (let* ((dct-mel (apply-dct (log-mel-features mfcc-obj)))
+         (reduced-mel (get-dct-mel-features dct-mel (num-cepstrum mfcc-obj))))
+    (setf (dct-mel-values mfcc-obj) dct-mel
+          (reduced-mel-values mfcc-obj) reduced-mel)))
 
 
 (defun split-padded-audio-into-frames (audio-data frame-length frame-step &key (verbose nil))
@@ -213,7 +285,7 @@
       (for i :from 0 :below (length splitted-frames))
       (push (apply-filter-to-frame (elt splitted-frames i) :filter-function filter-function)
             filtered-audio))
-    (nreverse filtered-audio)))
+     (nreverse filtered-audio)))
 
 
 
@@ -260,6 +332,7 @@
   (setf (emphasized-signal signal-processing-obj)
         (pre-emphasis-filter (audio-data signal-processing-obj))))
 
+
 (defgeneric pad-audio-with-zeros (signal-processing-obj)
   (:documentation "Finds the required padding for the audio signal and pads the zeros."))
 
@@ -281,11 +354,21 @@
                               (nfft signal-processing-obj))))
 
 (defun make-signal-processing (audio-data)
-  "Constructor function for MFCC Class."
+  "Constructor function for Signal processing class."
   (alexandria:with-gensyms (signal-processing-obj)
     (setf signal-processing-obj (make-instance 'signal-processing
                                   :audio-data audio-data))
     signal-processing-obj))
+
+
+
+(defun make-mfcc (audio-data)
+  "Constructor function for MFCC Class."
+  (alexandria:with-gensyms (mfcc-obj)
+    (setf mfcc-obj (make-instance 'mfcc
+                                  :audio-data audio-data))
+    mfcc-obj))
+
 
 
 (defmethod print-parameters-signal-processing ((signal-processing-obj signal-processing))
@@ -318,28 +401,6 @@ window-len - length of the filter window"
                 (1- window-len))))))
 
 
-(defparameter *wav-file* "/home/karthik/quicklisp/local-projects/signal/low-freq.wav")
-(defparameter *wav* (load-wav-file *wav-file*))
-(defparameter *audio-final* (chunk-audio-data *wav* 1.0))
-(defparameter *signal-processing-obj* (make-signal-processing *audio-final*))
-(defparameter *sig-obj* (make-signal-processing *audio-final*))
-
-#+test
-(plot-signal (emphasized-signal *signal-processing-obj*) "audio.png" :x-label "Samples"
-                                                 :y-label "Amplitude"
-                                                 :title "audio-data")
-#+test
-(print-parameters-signal-processing *signal-processing-obj*)
-#+test
-(defparameter *ex* (split-audio-into-frames (padded-frames *signal-processing-obj*)
-                                            (frame-length *signal-processing-obj*)
-                                            (frame-step *signal-processing-obj*)
-                                            :padded-p t))
-#+test
-(defparameter *filtered* (apply-filter-to-audio *ex*))
-
-
-
 
 (defun frequency-to-mel-scale (freq)
   "Function to convert value from frequency to mel-scale."
@@ -350,21 +411,6 @@ window-len - length of the filter window"
   "Function to convert value from mel-scale to frequency."
   (* 700 (- (exp (/ mel 1127)) 1)))
 
-
-
-;; (save-to-file "result-1.txt" (nth 56 (fft-result *signal-processing-obj*)))
-;; (save-to-file "result-1.txt" (napa-fft:rfft #(0 1 2 3)))
-;; (napa-fft:rfft #(1 2 3 4 5 6 7 8))
-
-
-;; (plot-signal (third (pow-spectrum *signal-processing-obj*))
-;;              "fft.png")
-
-;; (plot-signal (dft-analysis-core (pad-power-of-two (third (filtered-frames *signal-processing-obj*))))
-;;              "fft.png")
-
-;; (plot-signal (napa-fft:rifft (dft-analysis-core (pad-power-of-two (third (filtered-frames *signal-processing-obj*)))))
-;;              "fft.png")
 
 
 (defun fbank (min-freq max-freq n-fbank)
@@ -379,7 +425,7 @@ window-len - length of the filter window"
     (collect (mel-scale-to-frequency i) result-type 'vector)))
 
 
-(defun frequency-bin (seq &key (nfft *nfft*) (sample-rate *sample-rate*))
+(defun get-frequency-bin (seq &key (nfft *nfft*) (sample-rate *sample-rate*))
   "Returns the bin containing frequencies."
   (iter
     (for elt in-sequence seq)
@@ -400,13 +446,6 @@ window-len - length of the filter window"
                                  (- end middle)))) result-type 'vector)))
 
 
-(defun coerce-sequence (seq conversion-type)
-  (iter
-    (for elt :in-sequence seq)
-    (alexandria:coercef elt conversion-type)
-    (collect elt result-type 'vector)))
-
-
 (defun dot-product (a b)
   "Function returns the dot-product of the input sequences."
   ;; (declare (optimize (speed 3))
@@ -414,7 +453,7 @@ window-len - length of the filter window"
   (reduce #'+ (map 'simple-vector #'* a b)))
 
 
-(defun filter-banks (bin &key (nfft *nfft*))
+(defun get-filter-banks (bin &key (nfft *nfft*))
   "Returns the list of filter bank."
   (iter
     (for i :from 1 :below (- (length bin) 1))
@@ -429,7 +468,6 @@ window-len - length of the filter window"
         (for j :in-sequence fbank)
         (setf (aref out i) j))
       (collect out))))
-
 
 
 (defun list-to-2d-array (list)
@@ -474,7 +512,7 @@ window-len - length of the filter window"
                         (aref B j k)))))))
     out))
 
-(defun log-mel-features (filter-banks)
+(defun get-log-mel-features (filter-banks)
   "Applies log to the filter bank values."
   (with-gensyms (log-banks)
     (let ((row (get-row filter-banks))
@@ -491,48 +529,21 @@ window-len - length of the filter window"
       log-banks)))
 
 
-(defun apply-dct-mel-features (log-filter-banks)
-  "Applies DCT-II on the filter banks and returns only the -filter-num- values."
+(defun apply-dct (log-filter-banks)
+  "Applies DCT-II on the filter banks."
   (let ((row (get-row log-filter-banks)))
     (iter
       (for i :from 0 :below row)
       (collect (dct:dct (aops:sub log-filter-banks i)) result-type 'vector))))
 
 
-(defun dct-mel-features (log-filter-banks num-cepstrum)
-  (let ((row (get-row log-filter-banks))
-        (filter-banks (aops:combine log-filter-banks)))
+(defun get-dct-mel-features (dct-mel-values num-cepstrum)
+  (let ((row (get-row dct-mel-values))
+        (reduced-dct (aops:combine dct-mel-values)))
     (iter
       (for i :from 0 :below row)
-      (collect (aops:subvec (aops:sub filter-banks i) 1 (1+ num-cepstrum)) result-type 'vector))))
+      (collect (aops:subvec (aops:sub reduced-dct i) 1 (1+ num-cepstrum)) result-type 'vector))))
 
-
-(defparameter *bin* (frequency-bin (mel->frequency-sequence (fbank 0 22050 42))))
-(defparameter *data* (filter-banks (coerce-sequence *bin* 'single-float)))
-(defparameter *arr* (list-to-2d-array *data*))
-(defparameter *tra* (transpose *arr*))
-
-(defparameter *arr1* (list-to-2d-array (pow-spectrum *sig-obj*)))
-(defparameter *final* (matrix-multiplication *arr1* *tra*))
-(defparameter *log-res* (log-mel-features *final*))
-(defparameter *dct-res* (apply-dct-mel-features *log-res*))
-(defparameter *dct-final* (aops:combine (dct-mel-features *dct-res* 12)))
-(defparameter *mag* (list-to-2d-array (fft-result *sig-obj*)))
-(defparameter *split* (splitted-frames *sig-obj*))
-(defparameter *filt* (list-to-2d-array (filtered-frames *sig-obj*)))
-(defparameter *emp* (emphasized-signal *sig-obj*))
-(defparameter *pad* (padded-frames *sig-obj*))
-(aops:sub *filt* 0)
-
-(length (first (pow-spectrum *sig-obj*)))
-(length (first (filtered-frames *sig-obj*)))
-(length (first (splitted-frames *sig-obj*)))
-(length (first (fft-result *sig-obj*)))
-(length (padded-frames *sig-obj*))
-(array-dimensions *arr1*)
-(array-dimensions *arr*)
-(length (first *data*))
-(setf a '(1 2 3 4 5 6))
 
 (defun apply-log (seq &key (base 10) (multiplier 1))
   (iter
@@ -541,4 +552,39 @@ window-len - length of the filter window"
                 (log elt base)))))
 
 
-(apply-log a :multiplier 20)
+
+(defparameter *wav-file* "/home/karthik/quicklisp/local-projects/signal/music-stereo.wav")
+(defparameter *wav* (load-wav-file *wav-file*))
+;; (defparameter *audio-final* (chunk-audio-data *wav* 3.0))
+;; (defparameter *mfcc-obj* (make-mfcc *audio-final*))
+(defparameter *mfcc-obj* (make-mfcc (audio-data *wav*)))
+
+(defun print-mfcc-parameter-shape (mfcc-obj)
+  (format t "~& Total-number-of-frames: ~A ~%" (total-number-of-frames mfcc-obj))
+  (format t "~& Padding required: ~A ~%" (padding-required mfcc-obj))
+  (format t "~& padded-frames shape: ~A, type: ~A~%" (array-dimensions
+                                                      (padded-frames mfcc-obj))
+          (type-of (padded-frames mfcc-obj)))
+  (format t "~& splitted-frames shape: ~A, type: ~A~%" (array-dimensions
+                                                        (list-to-2d-array (splitted-frames mfcc-obj)))
+          (type-of (splitted-frames mfcc-obj)))
+  (format t "~& filtered-frames shape: ~A, type: ~A~%" (array-dimensions
+                                                      (list-to-2d-array (filtered-frames mfcc-obj)))
+          (type-of (filtered-frames mfcc-obj)))
+  (format t "~& fft shape: ~A, type: ~A ~%" (array-dimensions (list-to-2d-array (fft-result mfcc-obj)))
+          (type-of (fft-result mfcc-obj)))
+  (format t "~& filter banks shape: ~A, type: ~A ~%" (array-dimensions (filter-banks mfcc-obj))
+          (type-of (filter-banks mfcc-obj)))  
+
+  (format t "~& raw-mel-features shape: ~A, type: ~A ~%" (array-dimensions (raw-mel-features mfcc-obj))
+          (type-of (raw-mel-features mfcc-obj)))  
+  (format t "~& log-mel-features shape: ~A, type: ~A ~%" (array-dimensions (log-mel-features mfcc-obj))
+          (type-of (log-mel-features mfcc-obj)))  
+  (format t "~& dct-mel-features shape: ~A, type: ~A ~%" (array-dimensions (aops:combine (dct-mel-values mfcc-obj)))
+          (type-of (dct-mel-values mfcc-obj)))  
+  (format t "~& reduced-mel-features shape: ~A, type: ~A ~%" (array-dimensions (aops:combine (reduced-mel-values mfcc-obj)))
+          (type-of (reduced-mel-values mfcc-obj))))
+
+
+
+
