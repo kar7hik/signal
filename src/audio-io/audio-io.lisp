@@ -37,8 +37,8 @@
                 :accessor sample-rate
                 :type 'double-float)
    (num-channels :initarg :num-channels
-                 :initform *num-channels*
                  :accessor num-channels
+                 :initform *num-channels*
                  :type 'integer)
    (sample-interval :initarg :sample-interval
                     :initform *sample-interval*
@@ -138,18 +138,21 @@
 (defclass audio-from-file (wave-header) 
   ((audio-data :initarg :audio-data
                :accessor audio-data)
-   (total-audio-data-size :initarg :total-audio-data-size
-                          :accessor total-audio-data-size))
+   (audio-length :initarg :audio-length
+                 :accessor audio-length))
+
   (:documentation "Audio signal from a file."))
 
-(defun make-audio-from-file (&key duration sample-rate bits-per-sample audio-data total-audio-data-size num-channels)
+
+
+(defun make-audio-from-file (&key duration sample-rate bits-per-sample audio-data audio-length num-channels)
   "Constructor function for the class audio from file."
   (format t "~20A: ~10d~%" "sample audio-data" (array-dimensions audio-data))
   (make-instance 'audio-from-file :duration duration
                                   :sample-rate sample-rate
                                   :bits-per-sample bits-per-sample
                                   :audio-data audio-data
-                                  :total-audio-data-size total-audio-data-size
+                                  :audio-length audio-length
                                   :num-channels num-channels))
 
 
@@ -247,7 +250,7 @@
               :plot-filename "record-plot.png")
 
 
-
+;;FIXME: The load wav has been modified.
 (defun play-wav-audio (filename)
   "Function to play WAV file."
   (let* ((wav-file (load-wav-file filename :verbose t))

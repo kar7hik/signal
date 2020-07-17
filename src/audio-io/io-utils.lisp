@@ -183,17 +183,17 @@
   (let* ((bytes-per-int (coerce (/ bits-per-int 8) 'integer))
          (int-array-length (/ (length byte-array) bytes-per-int))
          (int-array (make-array int-array-length
-                                :element-type `(signed-byte ,bits-per-int))))
+                                :element-type 'single-float)))
     (format t "~20A:~10D~%" "bytes-per-int" bytes-per-int)
     (iter
       (for int-offset from 0 below int-array-length)
       (for byte-offset = (* bytes-per-int int-offset))
       (setf (aref int-array int-offset)
-            (unsigned-to-signed
-             (bytes-to-integer
-              (subseq byte-array byte-offset
-                      (+ byte-offset bytes-per-int)))
-             bits-per-int)))
+            (coerce (unsigned-to-signed
+                     (bytes-to-integer
+                      (subseq byte-array byte-offset
+                              (+ byte-offset bytes-per-int)))
+                      bits-per-int) 'single-float)))
     (format t "~20A: ~10d~%" "int-array shape" (array-dimensions int-array))    
     int-array))
 
@@ -254,15 +254,15 @@
 
 
 
-(defun chunk-audio-data (audio seconds)
+(defun chunk-audio-data (audio-obj seconds)
   "Returns the chunk of audio data seconds."
-  (let* ((audio-data (audio-data audio))
+  (let* ((audio-data (audio-data audio-obj))
          (audio-len (length audio-data))
-         (sample-rate (sample-rate audio))
+         (sample-rate (sample-rate audio-obj))
          (chunk-len (* sample-rate seconds)))
     (if (>= chunk-len audio-len)
         (progn
-          (format t "~&Cannot snip the audio; The audio size is less than the required time seconds. Returning the original audio.~%")
+          (format t "~&Cannot snip the audio; The audio size is less than the required time seconds. Returning the original audio. ~&Original audio: ~A~%" audio-len)
           audio-data)
         (let ((chunk-audio (make-array (ceiling chunk-len) :element-type 'single-float)))
           (format t "~20A: ~10d~%" "length chunk audio" (ceiling chunk-len))
@@ -272,8 +272,10 @@
                   (aref audio-data i)))
           chunk-audio))))
 
+
 ;; (defparameter *snip*
-;;   (chunk-audio-data *wav* 6.0))
+;;   (chunk-audio-data *wav* 5))
+;; (defparameter *mfcc-obj-1* (make-mfcc *snip*))
 ;; (save-to-file "snip.txt" *snip*)
 
 
@@ -287,3 +289,54 @@
 (defun zeros (dimensions &key (type 'integer))
   "Returns zeros of dimensions with the specified type."
   (fill-value dimensions (coerce 0 type) :type type))
+
+
+;; (defun data-as-2d-array (audio-data)
+;;   "doc"
+;;   (let* ((audio-len (length audio-data))
+;;          (reshape-len (ceiling (/ audio-len 2))))
+;;     (if (evenp audio-len)
+;;         (return-from data-as-2d-array (aops:reshape audio-data `(,reshape-len 2)))
+;;         (progn
+;;           (format t "~20A: ~10d~&" "restructure len" reshape-len)
+;;           (return-from data-as-2d-array (aops:reshape (concatenate 'vector audio-data #(0.0)) `(,reshape-len 2)))))))
+
+
+(defun data-as-list-vector (audio-data num-channels)
+  (let ((audio-len (length audio-data)))
+    (declare (type (simple-array single-float *) audio-data)
+             (type fixnum num-channels audio-len))
+    (if (evenp audio-len)
+        (fill-list-vector audio-data num-channels)
+        (fill-list-vector (concatenate 'vector audio-data #(0.0)) num-channels))))
+
+
+(defun fill-list-vector (audio-data num-channels)
+  (let ((audio-len (length audio-data)))
+    (declare (type (simple-array single-float *) audio-data)
+             (type fixnum num-channels audio-len))
+    (iter
+      (for i :from 0 :below audio-len :by num-channels)
+      (collect (list (aref audio-data i)
+                     (aref audio-data (1+ i))) result-type 'vector))))
+
+
+(defun restructure-data (audio-data num-channels)
+  "Reshapes the audio-data wrt num-channels. For mono audio, the data will be returned as it is. But for the stereo audio, the data will be split into right and left channel forming a 2D array."
+  (declare (type (simple-array single-float *) audio-data)
+           (type fixnum num-channels))
+  (when (= num-channels 1)
+    (return-from restructure-data audio-data))
+  (when (> num-channels 1)
+    (return-from restructure-data (data-as-list-vector audio-data num-channels))))
+
+
+;; (setf a (restructure-data (audio-data *wav*) (num-channels *wav*)))
+;; (save-to-file "audio.txt" (audio-data *mfcc-obj-1*))
+
+(defun find-audio-length (audio-data num-channels)
+  "Returns the audio length based on the audio type. Stereo audio-data is a 2D array containing left and right channel values. For mono, it is simply 1D array."
+  (* (car (array-dimensions audio-data))
+     num-channels))
+
+

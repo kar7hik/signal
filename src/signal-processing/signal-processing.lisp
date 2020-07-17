@@ -146,3 +146,34 @@
     preemphasized-samples))
 
 
+
+(defun hann (idx window-len)
+    "Hanning window -- ref *Discrete-time Signal Processing - Alan V. Oppenheim, Ronald W. Schafer.*
+idx - index of the window
+window-len - length of the filter window" 
+  (* 0.5 (- 1.0
+            (cos (/ (* 2 pi idx)
+                        (1- window-len))))))
+
+
+(defun hamming (idx window-len)
+  "Hamming window -- ref *Discrete-time Signal Processing - Alan V. Oppenheim, Ronald W. Schafer.*
+idx - index of the window
+window-len - length of the filter window" 
+  (- 0.54
+     (* 0.46
+        (cos (/ (* 2 pi idx)
+                (1- window-len))))))
+
+
+(defun triangular-window (begin middle end)
+  "Returns the triangular window coordinates for the given input parameters."
+  (iter
+    (for k :in-sequence (range begin :stop end))
+    (collect (cond
+               ((or (< k begin) (> k end)) 0.0)
+               ((<= k middle) (/ (- k begin)
+                                 (- middle begin)))
+               ((>= k middle) (/ (- end k)
+                                 (- end middle)))) result-type 'vector)))
+

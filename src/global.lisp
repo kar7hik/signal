@@ -49,6 +49,8 @@
 (defparameter *frequency* 440
   "Default tone frequency.")
 
+(defparameter *num-worker-threads* 8
+  "Number of worker threads for lparallel.")
 
 
 (defparameter *project-name* "signal/")

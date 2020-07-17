@@ -10,6 +10,8 @@
   :version "0.0.1"
   :depends-on (#:iterate
                 #:alexandria
+                #:petalisp
+                #:lparallel
                 #:cl-portaudio
                 #:vgplot
                 ;#:bordeaux-fft
@@ -31,8 +33,10 @@
                              (:module audio-io
                               :serial t
                               :components ((:file "io-utils")
+                                           (:file "feature-extraction-helper")
                                            (:file "audio-io")
                                            (:file "wav")
+                                           (:file "mfcc-helper")
                                            (:file "feature-extraction")))
                              (:module core
                               :serial t

@@ -20,16 +20,16 @@ def read_data_from_file(filename):
     return lines
 
 
-filename = '/home/karthik/quicklisp/local-projects/signal/music-stereo.wav'
+filename = '/home/karthik/quicklisp/local-projects/signal/music-mono.wav'
 sample_rate, signal = scipy.io.wavfile.read(filename)
-signal = signal.reshape(-1, 1)
-write_data_to_file(signal, "audio-1.txt")
 #signal = signal[0:int(2.0 * sample_rate)]  # Keep the first 1.0 seconds
+#signal = signal.reshape(-1, 1)
+#write_data_to_file(signal, "audio-1.txt")
 print("signal: {}" . format(len(signal)))
 pre_emphasis = 0.97
 emphasized_signal = numpy.append(signal[0], signal[1:] - pre_emphasis * signal[:-1])
 print("emphasized signal: {}" . format(len(emphasized_signal)))
-
+#write_data_to_file(emphasized_signal, "emp.txt")
 
 frame_size = 0.020
 frame_stride = 0.01
@@ -48,11 +48,13 @@ indices = numpy.tile(numpy.arange(0, frame_length), (num_frames, 1)) + numpy.til
 frames = pad_signal[indices.astype(numpy.int32, copy=False)]
 
 frames *= numpy.hamming(frame_length)
-# print(frames[0])
+
 
 NFFT = 1024
 mag_frames = numpy.absolute(numpy.fft.rfft(frames, NFFT))  # Magnitude of the FFT
-pow_frames = ((1.0 / NFFT) * ((mag_frames) ** 2))
+pow_frames = ((1.0 / NFFT) * (numpy.square(mag_frames)))
+# print("power")
+# print(pow_frames[0])
 
 # print("mag_frames shape: {}".format(numpy.shape(mag_frames)))
 
@@ -62,7 +64,7 @@ high_freq_mel = (2595 * numpy.log10(1 + (sample_rate / 2) / 700))  # Hz to Mel
 mel_points = numpy.linspace(low_freq_mel, high_freq_mel, nfilt + 2)  # Equally spaced in Mel scale
 hz_points = (700 * (10**(mel_points / 2595) - 1))  # Convert Mel to Hz
 bin = numpy.floor((NFFT + 1) * hz_points / sample_rate)
-
+print(bin)
 fbank = numpy.zeros((nfilt, int(numpy.floor(NFFT / 2 + 1))))
 # print("fbank shape: {}".format(numpy.shape(fbank)))
 # print("pow_frames shape: {}".format(numpy.shape(pow_frames)))
@@ -80,7 +82,7 @@ for m in range(1, nfilt + 1):
 
 # write_data_to_file(fbank, 'fbank.txt')
 filter_banks = numpy.dot(pow_frames, fbank.T)
-print("filter_banks shape: {}".format(numpy.shape(filter_banks)))
+filter_banks[0]
 filter_banks = numpy.where(filter_banks == 0, numpy.finfo(float).eps, filter_banks)  # Numerical Stability
 # write_data_to_file(filter_banks, 'filter.txt')
 
@@ -103,26 +105,29 @@ mel_filter_num = 10
 # print("Minimum frequency: {0}".format(freq_min))
 # print("Maximum frequency: {0}".format(freq_high))
 
-num_ceps = 12
+num_ceps = 13
 # Keep 2-13
 mfcc = dct(filter_banks, type=2, axis=1, norm='ortho')[:, 1:(num_ceps + 1)]
 print(mfcc[0])
+print("filter_banks shape: {}".format(numpy.shape(filter_banks)))
+cep_lifter = 22
 
-# cep_lifter = 22
+(nframes, ncoeff) = mfcc.shape
+n = numpy.arange(ncoeff)
+lift = 1 + (cep_lifter / 2) * numpy.sin(numpy.pi * n / cep_lifter)
 
-# (nframes, ncoeff) = mfcc.shape
-# n = numpy.arange(ncoeff)
-# lift = 1 + (cep_lifter / 2) * numpy.sin(numpy.pi * n / cep_lifter)
+mfcc *= lift
+# print(filter_banks)
+#numpy.shape(filter_banks)
 
-# mfcc *= lift
-# filter_banks -= (numpy.mean(filter_banks, axis=0) + 1e-8)
-# mfcc -= (numpy.mean(mfcc, axis=0) + 1e-8)
+filter_banks -= (numpy.mean(filter_banks, axis=0) + 1e-8)
+mfcc -= (numpy.mean(mfcc, axis=0) + 1e-8)
+mfcc[0]
 
-# plt.subplot(312)
-# filter_banks -= (numpy.mean(filter_banks, axis=0) + 1e-8)
-# plt.imshow(filter_banks.T, cmap=plt.cm.jet, aspect='auto')
-# plt.xticks(numpy.arange(0, (filter_banks.T).shape[1], int((filter_banks.T).shape[1] / 7)), ['0s', '0.5s', '1s', '1.5s', '2.5s', '3s', '3.5'])
-# ax = plt.gca()
-# ax.invert_yaxis()
-# plt.title('the spectrum image')
-# plt.show()
+plt.subplot(312)
+plt.imshow(filter_banks.T, cmap=plt.cm.jet, aspect='auto')
+plt.xticks(numpy.arange(0, (filter_banks.T).shape[1], int((filter_banks.T).shape[1] / 7)), ['0s', '0.5s', '1s', '1.5s', '2.5s', '3s', '3.5'])
+ax = plt.gca()
+ax.invert_yaxis()
+plt.title('the spectrum image')
+plt.show()

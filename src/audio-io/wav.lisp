@@ -46,14 +46,24 @@
       ;; If it's not 8-bit data, make the array into a *sample* array, not a *byte* array
       (format t "~20A: ~10d~%" "xx-audio-data" (array-dimensions data))
       (setf data (byte-array-to-int-array data bits-per-sample))
-      (let* ((divisor (expt 2 (1- bits-per-sample))))
+      (setf data (restructure-data data channels))
+      (let* ((divisor (expt 2 (1- bits-per-sample)))
+             (duration 0.0))
+        (declare (ignore divisor))
+        (when (= channels 1)
+          (setf duration (float (/ (length data) byte-rate)))
+          (format t "~20A: ~10d~&" "duration" duration))
+        (when (> channels 1)
+          (setf duration
+                (float (/ (car (array-dimensions data)) byte-rate)))
+          (format t "~20A: ~10d~&" "(2) duration" duration))
 	;;(setf data (map 'vector (lambda (x) (coerce (/ x divisor) 'single-float)) data))
-        (format t "~20A: ~10d~%" "xx-audio-data" (array-dimensions data))
-        (make-audio-from-file :duration (float (/ (length data) byte-rate))
+        (setf data-size (find-audio-length data channels))
+        (make-audio-from-file :duration duration
                               :sample-rate (coerce sample-rate 'double-float)
                               :bits-per-sample bits-per-sample
-                              :audio-data (coerce-sequence data 'single-float)
-                              :total-audio-data-size data-size
+                              :audio-data data
+                              :audio-length data-size
                               :num-channels channels)))))
 
 ;; #+test
