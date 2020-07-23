@@ -38,6 +38,9 @@
                                            (:file "wav")
                                            (:file "mfcc-helper")
                                            (:file "feature-extraction")))
+                             (:module self-organizing
+                              :serial t
+                              :components ((:file "som")))
                              (:module core
                               :serial t
                               :components ((:file "signal")))

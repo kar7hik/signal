@@ -58,3 +58,9 @@
                                                          "quicklisp/local-projects/"))
 (defparameter *current-directory* (merge-pathnames *local-working-directory*
                                                    (user-homedir-pathname)))
+
+(defparameter *data-directory* "data/")
+(defparameter *local-data-directory* (merge-pathnames *data-directory* *current-directory*))
+
+(defparameter *result-directory* "result/")
+(defparameter *local-result-directory* (merge-pathnames *result-directory* *current-directory*))

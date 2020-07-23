@@ -45,6 +45,18 @@
                    *current-directory*))
 
 
+(defun create-data-file-path (filename)
+  "Creates a file path from the filename."
+  (merge-pathnames filename
+                   *local-data-directory*))
+
+
+(defun create-result-file-path (filename)
+  "Creates a file path from the filename."
+  (merge-pathnames filename
+                   *local-result-directory*))
+
+
 (defun coerce-sequence (seq conversion-type)
   (iter
     (for elt :in-sequence seq)
@@ -147,7 +159,7 @@
 
 (defun save-2d-array-to-file (filename array)
   (with-open-file (fstream
-                   (create-file-path filename)
+                   (create-result-file-path filename)
                    :direction :output
                    :if-exists :supersede)
     (let ((rows (get-row array))

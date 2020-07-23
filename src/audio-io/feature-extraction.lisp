@@ -278,21 +278,21 @@
 
 
 
-(defparameter *wav* (load-wav-file *wav-file*))
-;; (defparameter *snip* (chunk-audio-data (load-wav-file *wav-file*) 0.5))
-;; (defparameter *sig* (make-signal-processing *snip*
+;; (defparameter *wav* (load-wav-file *wav-file*))
+;; ;; (defparameter *snip* (chunk-audio-data (load-wav-file *wav-file*) 0.5))
+;; ;; (defparameter *sig* (make-signal-processing *snip*
+;; ;;                                             (num-channels *wav*)))
+;; (defparameter *sig* (make-signal-processing (audio-data *wav*)
 ;;                                             (num-channels *wav*)))
-(defparameter *sig* (make-signal-processing (audio-data *wav*)
-                                            (num-channels *wav*)))
-(defparameter *mfcc-obj* (make-mfcc *sig*))
-(defparameter *lift* (apply-liftering-to-dct *mfcc-obj*))
-(defparameter *log-mean* (get-mean-normalization (log-mel-features *mfcc-obj*)))
-(defparameter *mfcc-mean* (get-mean-normalization *lift*))
-(defparameter *final* (delta *lift* 2))
-(defparameter *energy* (find-energy (power-spectrum *sig*)))
+;; (defparameter *mfcc-obj* (make-mfcc *sig*))
+;; (defparameter *lift* (apply-liftering-to-dct *mfcc-obj*))
+;; (defparameter *log-mean* (get-mean-normalization (log-mel-features *mfcc-obj*)))
+;; (defparameter *mfcc-mean* (get-mean-normalization *lift*))
+;; (defparameter *final* (delta *lift* 2))
+;; (defparameter *energy* (find-energy (power-spectrum *sig*)))
 
 
-(aops:sub *lift* 0)
-(aops:sub *final* 0)
-(aops:sub (log-mel-features *mfcc-obj*) 0)
+;; (aops:sub *lift* 0)
+;; (aops:sub *final* 0)
+;; (aops:sub (log-mel-features *mfcc-obj*) 0)
 

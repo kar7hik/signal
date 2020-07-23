@@ -215,7 +215,7 @@
     (vgplot:title title)
     (when linespace-supplied-p
       (vgplot:axis linespace))
-    (vgplot:print-plot (create-file-path filename))
+    (vgplot:print-plot (create-result-file-path filename))
     (vgplot:format-plot t "set terminal ~A" "qt"))
   'SAVED)
 
@@ -245,7 +245,7 @@
 (defun save-to-file (filename samples)
   "Creates a File with sample data."
   (with-open-file (fstream
-                   (create-file-path filename)
+                   (create-result-file-path filename)
                    :direction :output
                    :if-exists :supersede)
     (iter
