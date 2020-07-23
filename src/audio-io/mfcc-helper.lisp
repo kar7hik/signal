@@ -83,7 +83,7 @@
         (reduced-dct (compute (fuse dct-mel-values))))
     (iter
       (for i :from 0 :below row)
-      (collect (aops:subvec (aops:sub reduced-dct i) 1 (1+ num-cepstrum)) result-type 'vector))))
+      (collect (aops:subvec (aops:sub reduced-dct i) 0  num-cepstrum) result-type 'vector))))
 
 
 
@@ -102,7 +102,7 @@
 
 
 (defun set-log-mel-features (mfcc-obj)
-  (let* ((raw-mult (matrix-multiplication (list-to-2d-array (power-spectrum (audio-obj mfcc-obj)))
+  (let* ((raw-mult (matrix-multiplication (power-spectrum (audio-obj mfcc-obj))
                                           (compute (transpose (filter-banks mfcc-obj)))))
          (log-mel (get-log-mel-features raw-mult)))
     (setf (raw-mel-features mfcc-obj) raw-mult
@@ -152,3 +152,179 @@
   "Returns the mean values of the 2d-array with axis 0."
   (let ((arr-mean (2d-mean 2d-array)))
     (compute (alpha #'- 2d-array arr-mean))))
+
+
+
+;; (defparameter *mel* (reduced-mel-values *mfcc-obj*))
+
+;; (defparameter *del* (iter
+;;                       (for i :from 1 :below (get-row *mel*))
+;;                       (collect
+;;                           (compute (alpha #'- (aops:sub *mel* i)
+;;                                           (aops:sub *mel* (- i 1)))))))
+
+
+(defun pad-array (array &key (row-above 0)
+                          (row-below 0)
+                          (col-right 0)
+                          (col-left 0)
+                          (pad-with 'edge))
+  (declare (ignore pad-with))
+  (alexandria:with-gensyms (result-array)
+    (let ((rows (+ row-above
+                    row-below
+                    (get-row array)))
+          (cols (+ col-right
+                   col-left
+                   (get-col array)))
+          (element-type (array-element-type array)))
+      (setf result-array
+            (make-array `(,rows ,cols)
+                        :element-type element-type
+                        :initial-element (coerce 0 element-type)))
+      (dotimes (i (get-row array))
+        (dotimes (j (get-col array))
+          (setf (aref result-array (+ i row-above) (+ j col-left))
+                (aref array i j))))
+      (when row-above
+        (dotimes (i row-above)
+          (dotimes (j (get-col array))
+            (setf (aref result-array i (+ j col-left))
+                  (aref array 0 j)))))
+      (when row-below
+        (dotimes (i row-below)
+          (dotimes (j (get-col array))
+            (setf (aref result-array
+                        (+ i (get-row array) row-above)
+                        (+ j col-left))
+                  (aref array (1- (get-row array)) j)))))
+      (when col-left
+        (dotimes (i rows)
+          (dotimes (j col-left)
+            (setf (aref result-array
+                        i j)
+                  (aref result-array i col-left)))))
+      (when col-right
+        (dotimes (i rows)
+          (dotimes (j col-right)
+            (setf (aref result-array
+                        i (+ j col-left (get-col array)))
+                  (aref result-array i (+ (1- (get-col array)) col-left))))))
+      result-array)))
+
+
+
+;; (defparameter *test* #2A((1 2 3)
+;;                          (4 5 6)
+;;                          (7 8 9)
+;;                          (3 5 6)
+;;                          (8 5 2)
+;;                          (1 3 3)
+;;                          (5 8 6)
+;;                          (7 7 7)
+;;                          (3 1 4)
+;;                          (1 0 9)))
+
+;; (defparameter *padd* (pad-array *test* :row-above 2 :row-below 2))
+
+
+
+(defun create-empty-array-like (array &key (type 'single-float) (initial-value 0.0))
+  "Returns a empty array with same dimension as the input array. Default initial values are 0.0. Default return type is single-float."
+  (make-array (array-dimensions array) :element-type type
+                                       :initial-element (coerce initial-value type)))
+
+
+(defun delta (feature-array N)
+  (declare (type (simple-array * *) feature-array))
+  (let* ((padded-array (pad-array feature-array :row-above N :row-below N))
+         (multiplier (range (* -1 N) :stop N))
+         (stride-size (length multiplier))
+         (col (get-col feature-array))
+         (denominator 1.0))
+    (declare (type (simple-array * *) padded-array)
+             (type (simple-array * *) multiplier)
+             (type fixnum stride-size col))
+    (setf denominator
+          (* N (compute (beta #'+
+                              (iter
+                                (for i :from 1 :below (1+ N))
+                                (collect (expt i 2) result-type 'vector))))))
+    (compute (alpha #'/
+                    (aops:combine
+                     (iter
+                       (for row :from 0 :below (get-row feature-array))
+                       (collect (compute
+                                 (beta #'+
+                                       (transpose
+                                        (alpha #'*
+                                               multiplier
+                                               (transpose
+                                                (reshape
+                                                 padded-array (~ row (+ row (1- stride-size))
+                                                                 ~ 0 (1- col))))))))
+                         result-type 'vector)))
+                    denominator))))
+
+
+
+
+
+
+;; (defun delta-1 (feature-array N)
+;;   (declare (type (simple-array * *) feature-array))
+;;   (let* ((padded-array (pad-array feature-array :row-above N :row-below N))
+;;          (multiplier (range (- N) :stop N))
+;;          (stride-size (length multiplier))
+;;          (col (get-col feature-array)))
+;;     (compute (alpha #'/
+;;                     (aops:combine
+;;                      (iter
+;;                        (for row :from 0 :below (get-row feature-array))
+;;                        (collect (compute (beta #'+
+;;                                                (aops:combine
+;;                                                 (let ((temp (compute (reshape padded-array (~ row (+ row (1- stride-size)) ~ 0 (1- col))))))
+;;                                                   (iter
+;;                                                     (for i :from row :below (+ row stride-size))
+;;                                                     (for j :from 0 :below stride-size)
+;;                                                     (collect
+;;                                                         (compute
+;;                                                          (alpha #'*
+;;                                                                 (aref multiplier j)
+;;                                                                 (aops:sub temp j)))
+;;                                                       result-type 'vector))))))
+;;                          result-type 'vector)))
+;;                     10.0))))
+
+
+;; (time (defparameter *fin* (delta-1 *lift* 2)))
+(declaim (ftype (function ((simple-array float *)) (simple-array * *)) find-energy))
+(defun find-energy (power-spectrum-array)
+  (alexandria:with-gensyms (energy-result)
+    (let ((array-size (get-row power-spectrum-array)))
+      (declare (type fixnum array-size))
+      (setf energy-result
+            (make-array array-size
+                        :element-type 'double-float
+                        :initial-element 0d0))
+      (dotimes (i array-size)
+        (setf (aref energy-result i)
+              (the double-float (reduce #'+ (aops:sub power-spectrum-array i))))))
+    energy-result))
+
+
+
+
+
+;; (defun energy (power-spectrum-array)
+;;   (alexandria:with-gensyms (energy-result)
+;;     (let ((array-size (array-total-size power-spectrum-array)))
+;;       (setf energy-result
+;;             (make-array array-size
+;;                         :element-type 'double-float
+;;                         :initial-element 0d0))
+;;       )
+;;     energy-result))
+
+
+

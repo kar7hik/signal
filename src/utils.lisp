@@ -93,17 +93,17 @@
 
 
 
-;; (defun transpose (arr)
-;;   (let* ((row (get-row arr))
-;;          (col (get-col arr))
-;;          (tran (make-array (list col row))))
-;;     (iter
-;;       (for i :from 0 :below row)
-;;       (iter
-;;         (for j :from 0 :below col)
-;;         (setf (aref tran j i)
-;;               (aref arr i j))))
-;;     tran))
+(defun transpose% (arr)
+  (let* ((row (get-row arr))
+         (col (get-col arr))
+         (tran (make-array (list col row))))
+    (iter
+      (for i :from 0 :below row)
+      (iter
+        (for j :from 0 :below col)
+        (setf (aref tran j i)
+              (aref arr i j))))
+    tran))
 
 
 ;; (defun matrix-multiplication (A B)
@@ -164,28 +164,28 @@
 
 
 
-(declaim (ftype (function (matrix matrix &optional (or null fixnum) (or null fixnum) (or null fixnum)) matrix) matprod))
-(defun matprod (fst snd &optional d1 d2 d3)
-  (declare (optimize (speed 3) (debug 0) (space 0) (safety 0)))
-  (if d1
-     (let ((prod (make-array (list d1 d3) :element-type (array-element-type fst))))
-        (loop :for i :from 0 :below d1 :do
-          (loop :for j :from 0 :below d3 :do
-            (setf (aref prod i j)
-                  (loop :for k :from 0 :below d2
-                        :sum (the integer (* (the integer (aref fst i k)) (the integer (aref snd k j))))))))
-      prod)
-     (destructuring-bind (m n) (array-dimensions fst)
-       (destructuring-bind (n1 l) (array-dimensions snd)
-         (assert (and (= n n1)
-                      (eql (array-element-type fst) (array-element-type fst))))
-         (let ((prod (make-array (list m l) :element-type (array-element-type fst))))
-             (loop :for i :from 0 :below m :do
-               (loop :for j :from 0 :below l :do
-                 (setf (aref prod i j)
-                       (loop :for k :from 0 :below n
-                             :sum (the integer (* (the integer (aref fst i k)) (the integer (aref snd k j))))))))
-           prod)))))
+;; (declaim (ftype (function (matrix matrix &optional (or null fixnum) (or null fixnum) (or null fixnum)) matrix) matprod))
+;; (defun matprod (fst snd &optional d1 d2 d3)
+;;   (declare (optimize (speed 3) (debug 0) (space 0) (safety 0)))
+;;   (if d1
+;;      (let ((prod (make-array (list d1 d3) :element-type (array-element-type fst))))
+;;         (loop :for i :from 0 :below d1 :do
+;;           (loop :for j :from 0 :below d3 :do
+;;             (setf (aref prod i j)
+;;                   (loop :for k :from 0 :below d2
+;;                         :sum (the integer (* (the integer (aref fst i k)) (the integer (aref snd k j))))))))
+;;       prod)
+;;      (destructuring-bind (m n) (array-dimensions fst)
+;;        (destructuring-bind (n1 l) (array-dimensions snd)
+;;          (assert (and (= n n1)
+;;                       (eql (array-element-type fst) (array-element-type fst))))
+;;          (let ((prod (make-array (list m l) :element-type (array-element-type fst))))
+;;              (loop :for i :from 0 :below m :do
+;;                (loop :for j :from 0 :below l :do
+;;                  (setf (aref prod i j)
+;;                        (loop :for k :from 0 :below n
+;;                              :sum (the integer (* (the integer (aref fst i k)) (the integer (aref snd k j))))))))
+;;            prod)))))
 
 
 
@@ -206,8 +206,10 @@
 (defun product (x &optional axis)
   (compute (β* #'* 1 x axis)))
 
+
 (defun sum (x &optional axis)
   (compute (β* #'+ 0 x axis)))
+
 
 (defun 2d-mean (2d-array &key (axis 0) (type 'single-float))
   (let ((divisor (if (zerop axis)

@@ -42,8 +42,8 @@
 
 (defun fill-buffer (buffer source start end)
   "Function to fill the buffer with source data."
-  (let ((src-len (length source))
-        (buf-len (length buffer))
+  (let ((src-len (get-row source))
+        (buf-len (get-row buffer))
         (idx 0))
     (iter
       (while (and (< (+ idx start) end)
@@ -254,27 +254,21 @@
 
 
 
+
 (defun chunk-audio-data (audio-obj seconds)
   "Returns the chunk of audio data seconds."
   (let* ((audio-data (audio-data audio-obj))
          (audio-len (length audio-data))
          (sample-rate (sample-rate audio-obj))
-         (chunk-len (* sample-rate seconds)))
+         (chunk-len (round (* sample-rate seconds))))
     (if (>= chunk-len audio-len)
         (progn
           (format t "~&Cannot snip the audio; The audio size is less than the required time seconds. Returning the original audio. ~&Original audio: ~A~%" audio-len)
           audio-data)
-        (let ((chunk-audio (make-array (ceiling chunk-len) :element-type 'single-float)))
-          (format t "~20A: ~10d~%" "length chunk audio" (ceiling chunk-len))
-          (iter
-            (for i :from 0 :below chunk-len)
-            (setf (aref chunk-audio i)
-                  (aref audio-data i)))
-          chunk-audio))))
-
+        (aops:subvec audio-data 0 chunk-len))))
 
 ;; (defparameter *snip*
-;;   (chunk-audio-data *wav* 5))
+;;   (chunk-audio-data *wav* 1))
 ;; (defparameter *mfcc-obj-1* (make-mfcc *snip*))
 ;; (save-to-file "snip.txt" *snip*)
 

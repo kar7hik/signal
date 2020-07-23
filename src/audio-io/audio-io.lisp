@@ -243,7 +243,7 @@
 
 
 #+test
-(record-audio :record-time 5
+(record-audio :record-time 2
               :save-to-file t
               :audio-filename "new-mic.wav"
               :plot-data nil
@@ -254,22 +254,31 @@
 (defun play-wav-audio (filename)
   "Function to play WAV file."
   (let* ((wav-file (load-wav-file filename :verbose t))
+         (num-channels (num-channels wav-file))
          (total-audio-data-size (length (audio-data wav-file)))
          (idx 0)
-         (buffer-len (* (audio-buffer-size wav-file) (num-channels wav-file)))
-         (buffer (make-array buffer-len :element-type 'single-float :initial-element 0.0)) 
-         (audio-source-buffer (alexandria:coercef (audio-data wav-file) 'vector)))
+         (buffer-len (* (audio-buffer-size wav-file) num-channels))
+         (buffer (make-array buffer-len
+                             :element-type 'single-float
+                             :initial-element 0.0)) 
+         (audio-source-buffer (coerce (flatten-list (coerce (audio-data wav-file) 'list)) 'vector))
+         (divisor (expt 2 (1- (bits-per-sample wav-file)))))
+    (setf audio-source-buffer
+          (map 'vector (lambda (x)
+                         (coerce (/ x divisor)
+                                 'single-float))
+               audio-source-buffer))
     (with-audio
       (with-default-audio-stream (astream
-                                  (num-channels wav-file)
-                                  (num-channels wav-file)
+                                  num-channels
+                                  num-channels
                                   :sample-format :float
                                   :sample-rate (sample-rate wav-file)
                                   :frames-per-buffer (audio-buffer-size wav-file))
         (format t "~& <<< Starting Playback >>> ~%")
+        (format t "~& ~20A: ~20A ~%" "buffer-len" buffer-len)
         (format t "~& ~20A: ~20A ~%" "audio-size" total-audio-data-size)
-        (format t "~& ~20A: ~20A ~%" "num-channels" (num-channels wav-file))
-        
+        (format t "~& ~20A: ~20A ~%" "num-channels" num-channels)
         (iter
           (while (< idx total-audio-data-size))
           (fill-buffer buffer
@@ -279,7 +288,10 @@
           (write-stream astream buffer)
           (incf idx buffer-len))))))
 
-;; (play-wav-audio "/home/karthik/quicklisp/local-projects/signal/new-mic.wav")
+
+
+
+;; (play-wav-audio "/home/karthik/quicklisp/local-projects/signal/music-mono.wav")
 
 
 ;;; Wave Generate - User API

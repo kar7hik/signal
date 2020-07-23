@@ -46,10 +46,12 @@
       ;; If it's not 8-bit data, make the array into a *sample* array, not a *byte* array
       (format t "~20A: ~10d~%" "xx-audio-data" (array-dimensions data))
       (setf data (byte-array-to-int-array data bits-per-sample))
+      ;; (let ((divisor (expt 2 (1- bits-per-sample))))
+      ;;  (setf data (compute (alpha #'/ data divisor)))
+      ;;  (setf data (map 'vector (lambda (x) (coerce (/ x divisor) 'single-float)) data))
+      ;;         )
       (setf data (restructure-data data channels))
-      (let* ((divisor (expt 2 (1- bits-per-sample)))
-             (duration 0.0))
-        (declare (ignore divisor))
+      (let* ((duration 0.0))
         (when (= channels 1)
           (setf duration (float (/ (length data) byte-rate)))
           (format t "~20A: ~10d~&" "duration" duration))
@@ -57,7 +59,6 @@
           (setf duration
                 (float (/ (car (array-dimensions data)) byte-rate)))
           (format t "~20A: ~10d~&" "(2) duration" duration))
-	;;(setf data (map 'vector (lambda (x) (coerce (/ x divisor) 'single-float)) data))
         (setf data-size (find-audio-length data channels))
         (make-audio-from-file :duration duration
                               :sample-rate (coerce sample-rate 'double-float)
@@ -78,7 +79,7 @@
                                                 (num-channels *num-channels*))
   "Creates a Wav file"
   (let* ((header (make-wave-header (length sample-data)
-                                   :sample-rate sample-rate
+                                   :sample-rate  sample-rate
                                    :num-channels num-channels))
          (file (create-file-path filename))
          ;; Sample multiplier value taken from
@@ -109,10 +110,10 @@
       (write-unsigned-int-to-bytes (num-channels header)
                                  audio-stream
                                  :byte-count 2)
-      (write-unsigned-int-to-bytes (sample-rate header)
+      (write-unsigned-int-to-bytes (round (sample-rate header))
                                  audio-stream
                                  :byte-count 4)
-      (write-unsigned-int-to-bytes (byte-rate header)
+      (write-unsigned-int-to-bytes (round (byte-rate header))
                                  audio-stream
                                  :byte-count 4)
       (write-unsigned-int-to-bytes (block-align header)
