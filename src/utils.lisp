@@ -98,6 +98,31 @@
      (reshape x (~ 1 (range-size range-1) ~ 1 (range-size range-2))))))
 
 
+(defun coerce-to-scalar (x)
+  (setf x (lazy-array x))
+  (trivia:ematch (shape x)
+    ((~) x)
+    ((~ i)
+     (reshape x (make-transformation :input-mask (vector i) :output-rank 0)))
+    ((~ i ~ j)
+     (reshape x (make-transformation :input-mask (vector i j) :output-rank 0)))))
+
+
+(defun matmul (A B)
+  (β #'+
+     (α #'*
+        (reshape (coerce-to-matrix A) (τ (m n) (n m 1)))
+        (reshape (coerce-to-matrix B) (τ (n k) (n 1 k))))))
+
+
+(defun dot (x y)
+  (coerce-to-scalar
+   (matmul
+    (transpose x)
+    (coerce-to-matrix y))))
+
+
+
 (defun transpose (x)
   (reshape
    (coerce-to-matrix x)
@@ -143,8 +168,8 @@
   (let* ((m (car (array-dimensions A)))
          (n (cadr (array-dimensions A)))
          (l (cadr (array-dimensions B)))
-         (out (make-array `(,m ,l) :initial-element 0d0
-                          :element-type 'double-float)))
+         (out (make-array `(,m ,l) :initial-element 0.0
+                          :element-type 'single-float)))
     (declare (type fixnum m n l))
     (pdotimes (i m)
       (dotimes (k l)
@@ -176,28 +201,28 @@
 
 
 
-;; (declaim (ftype (function (matrix matrix &optional (or null fixnum) (or null fixnum) (or null fixnum)) matrix) matprod))
-;; (defun matprod (fst snd &optional d1 d2 d3)
-;;   (declare (optimize (speed 3) (debug 0) (space 0) (safety 0)))
-;;   (if d1
-;;      (let ((prod (make-array (list d1 d3) :element-type (array-element-type fst))))
-;;         (loop :for i :from 0 :below d1 :do
-;;           (loop :for j :from 0 :below d3 :do
-;;             (setf (aref prod i j)
-;;                   (loop :for k :from 0 :below d2
-;;                         :sum (the integer (* (the integer (aref fst i k)) (the integer (aref snd k j))))))))
-;;       prod)
-;;      (destructuring-bind (m n) (array-dimensions fst)
-;;        (destructuring-bind (n1 l) (array-dimensions snd)
-;;          (assert (and (= n n1)
-;;                       (eql (array-element-type fst) (array-element-type fst))))
-;;          (let ((prod (make-array (list m l) :element-type (array-element-type fst))))
-;;              (loop :for i :from 0 :below m :do
-;;                (loop :for j :from 0 :below l :do
-;;                  (setf (aref prod i j)
-;;                        (loop :for k :from 0 :below n
-;;                              :sum (the integer (* (the integer (aref fst i k)) (the integer (aref snd k j))))))))
-;;            prod)))))
+(declaim (ftype (function (matrix matrix &optional (or null fixnum) (or null fixnum) (or null fixnum)) matrix) matprod))
+(defun matprod (fst snd &optional d1 d2 d3)
+  (declare (optimize (speed 3) (debug 0) (space 0) (safety 0)))
+  (if d1
+     (let ((prod (make-array (list d1 d3) :element-type (array-element-type fst))))
+        (loop :for i :from 0 :below d1 :do
+          (loop :for j :from 0 :below d3 :do
+            (setf (aref prod i j)
+                  (loop :for k :from 0 :below d2
+                        :sum (the integer (* (the integer (aref fst i k)) (the integer (aref snd k j))))))))
+      prod)
+     (destructuring-bind (m n) (array-dimensions fst)
+       (destructuring-bind (n1 l) (array-dimensions snd)
+         (assert (and (= n n1)
+                      (eql (array-element-type fst) (array-element-type fst))))
+         (let ((prod (make-array (list m l) :element-type (array-element-type fst))))
+             (loop :for i :from 0 :below m :do
+               (loop :for j :from 0 :below l :do
+                 (setf (aref prod i j)
+                       (loop :for k :from 0 :below n
+                             :sum (the integer (* (the integer (aref fst i k)) (the integer (aref snd k j))))))))
+           prod)))))
 
 
 
@@ -223,9 +248,37 @@
   (compute (β* #'+ 0 x axis)))
 
 
+(defun elementwise-subtract (a b)
+  (compute
+   (α #'- a b)))
+
+
 (defun 2d-mean (2d-array &key (axis 0) (type 'single-float))
   (let ((divisor (if (zerop axis)
                      (get-row 2d-array)
                      (get-col 2d-array))))
     (compute (alpha #'/ (sum 2d-array axis)
                     (coerce divisor type)))))
+
+
+(defun square (value)
+  (* value value))
+
+(defun square-sequence (input-array)
+  (declare (type (simple-array * *) input-array))
+  (with-gensyms (square-result)
+    (setf square-result (alexandria:copy-array input-array))
+    (dotimes (i (array-total-size square-result))
+      (setf (row-major-aref square-result i)
+            (square (row-major-aref square-result i))))
+    square-result))
+
+
+
+(defun sqrt-sequence (input-array)
+  (declare (type (simple-array * *) input-array))
+  (with-gensyms (sqrt-result)
+    (setf sqrt-result (alexandria:copy-array input-array))
+    (dotimes (i (array-total-size sqrt-result))
+      (setf (row-major-aref sqrt-result i)
+            (sqrt i)))))

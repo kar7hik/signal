@@ -14,10 +14,13 @@
                 #:lparallel
                 #:cl-portaudio
                 #:vgplot
-                ;#:bordeaux-fft
+                ;;#:bordeaux-fft
+                #:eazy-gnuplot
                 #:napa-fft3
                 #:array-operations
                 #:dct
+                #:random-state
+                #:external-program
                 )
 
   :serial t
@@ -26,6 +29,11 @@
                              (:file "global")
                              (:file "general-error")
                              (:file "utils")
+                             (:module plotting
+                              :serial t
+                              :components ((:file "gnuplot")
+                                           (:file "plot")
+                                           ))
                              (:module signal-processing
                               :serial t
                               :components ((:file "signal-processing")

@@ -199,27 +199,6 @@
 
 
 
-(defun plot-signal (x filename &key (y nil y-supplied-p)
-                                 (signal-label ";signal;")
-                                 (x-label "x-label")
-                                 (y-label "y-label")
-                                 (linespace '(0 1000 0 100) linespace-supplied-p)
-                                 (title "Auto-generated"))
-  "Minimal high level function to interact with VGPLOT."
-  (progn
-    (if y-supplied-p
-        (vgplot:plot x y signal-label)
-        (vgplot:plot x signal-label))
-    (vgplot:xlabel x-label)
-    (vgplot:ylabel y-label)
-    (vgplot:title title)
-    (when linespace-supplied-p
-      (vgplot:axis linespace))
-    (vgplot:print-plot (create-result-file-path filename))
-    (vgplot:format-plot t "set terminal ~A" "qt"))
-  'SAVED)
-
-
 (defun create-wave-samples (buffer wave-function frequency time-step)
   "Create a wave signal with wave-function."
   (iter

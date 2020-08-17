@@ -37,7 +37,8 @@
   "The number of samples in the audio buffer.")
 
 
-;;; Global Variables
+;;; Global Variables:
+;; Signal Processing:
 (defparameter *sample-rate* 44100d0
   "Default audio sample rate.")
 (defparameter *seconds* 5
@@ -49,18 +50,27 @@
 (defparameter *frequency* 440
   "Default tone frequency.")
 
+;; For parallel processing:
 (defparameter *num-worker-threads* 8
   "Number of worker threads for lparallel.")
 
-
+;; Directory variables:
 (defparameter *project-name* "signal/")
 (defparameter *local-working-directory* (merge-pathnames *project-name*
                                                          "quicklisp/local-projects/"))
 (defparameter *current-directory* (merge-pathnames *local-working-directory*
                                                    (user-homedir-pathname)))
-
 (defparameter *data-directory* "data/")
 (defparameter *local-data-directory* (merge-pathnames *data-directory* *current-directory*))
-
 (defparameter *result-directory* "result/")
 (defparameter *local-result-directory* (merge-pathnames *result-directory* *current-directory*))
+
+;; Self-Organizing:
+(defparameter *generator* (random-state:make-generator :mersenne-twister-64 123)
+  "Random state generator.")
+(defparameter *low* 0
+  "Low limit for random number generator.")
+(defparameter *high* 1
+  "High limit for random number generator.")
+
+

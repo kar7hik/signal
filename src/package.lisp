@@ -6,10 +6,12 @@
         #:alexandria-2
         #:petalisp
         #:lparallel
-        ;#:bordeaux-fft
+        ;;#:bordeaux-fft
         #:napa-fft
         #:portaudio
-        #:vgplot)
+        ;;#:vgplot
+        #:eazy-gnuplot
+        #:random-state)
   (:shadowing-import-from #:iterate #:terminate #:in)
   (:shadowing-import-from #:alexandria-2 #:flatten)
   (:shadowing-import-from #:vgplot #:range)

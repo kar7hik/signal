@@ -84,7 +84,6 @@
                                (* x alpha))
                              (aref sequence (- i 1)))))))
 
-
 ;;; Splitting audio data into frames:
 (defun split-padded-audio-into-frames (audio-data frame-length frame-step &key (verbose nil))
   (let* ((audio-data-length (length audio-data))
