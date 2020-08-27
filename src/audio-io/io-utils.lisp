@@ -118,12 +118,14 @@
       (dpb value (byte size 0) -1)
       value))
 
+
 (defun integer-to-bytes (int &key (byte-count 4))
   (let ((bytes '()))
     (dotimes (i byte-count)
       (push (ldb (byte 8 (* i 8)) int)
 	    bytes))
     (nreverse bytes)))
+
 
 
 
@@ -155,9 +157,35 @@
   (convert-signed-int-to-bytes signed-int byte-count stream))
 
 
+
+
+;; (defun int-array-to-byte-array (int-array bits-per-int)
+;;   "Convert a byte array into an int array.  Requires the number of bits per int to be specified.
+;;    If the number of bits is 16, then each pair of bytes forms a single 16-bit integer."
+;;   (assert (= (mod bits-per-int 8) 0))
+;;   (let* ((bytes-per-int (coerce (/ bits-per-int 8) 'integer))
+;; 	 (byte-array-length (* (length int-array) bytes-per-int))
+;; 	 (byte-array (make-array byte-array-length :element-type '(unsigned-byte 8)))
+;; 	 (int-array-length (length int-array)))
+;;     ;; Do I need to make the int array consist of unsigned ints?!?!?!
+;;     (loop for int across int-array
+;;        for int-offset from 0 below int-array-length
+;;        for byte-list = (integer-to-bytes int :byte-count bytes-per-int)
+;;        for byte-array-offset1 = (* bytes-per-int int-offset) do
+;; 	 (loop for byte in byte-list
+;; 	    for i from 0 below bytes-per-int
+;; 	    for byte-array-offset2 = (+ byte-array-offset1 i) do
+;; 	      (setf (aref byte-array byte-array-offset2) byte)))
+;;     byte-array))
+
+
+
 ;;; Taken from "https://github.com/belambert/cl-asr/blob/master/src/interface/wav-interface.lisp"
 (defun int-array-to-byte-array (int-array bits-per-int)
-  "Convert a byte array into an int array.  Requires the number of bits per int to be specified. If the number of bits is 16, then each pair of bytes forms a single 16-bit integer."
+  "Convert a byte array into an int array.  
+Requires the number of bits per int to be specified. 
+If the number of bits is 16, then each pair of bytes forms a single 16-bit integer."
+  (declare (type (simple-array integer *) int-array))
   (assert (= (mod bits-per-int 8) 0))
   (let* ((bytes-per-int (coerce (/ bits-per-int 8) 'integer))
          (byte-array-length (* (length int-array) bytes-per-int))
@@ -178,7 +206,9 @@
 
 
 (defun byte-array-to-int-array (byte-array bits-per-int)
-  "Convert a byte array into an int array.  Requires the number of bits per int to be specified. If the number of bits is 16, then each pair of bytes forms a single 16-bit integer."
+  "Convert a byte array into an int array.  
+Requires the number of bits per int to be specified. 
+If the number of bits is 16, then each pair of bytes forms a single 16-bit integer."
   (assert (= (mod bits-per-int 8) 0))
   (let* ((bytes-per-int (coerce (/ bits-per-int 8) 'integer))
          (int-array-length (/ (length byte-array) bytes-per-int))

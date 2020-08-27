@@ -48,25 +48,34 @@
    (neurons :initarg :neurons
             :accessor neurons
             :documentation "2D array of neurons. The array shape is map-size.")
+   (num-neurons :initarg :num-neurons
+                :accessor num-neurons
+                :type fixnum
+                :documentation "Total number of neurons in the SOM Map.")
    (input-size :initarg :input-size
                :accessor input-size
-               :type fixnum)
+               :type fixnum
+               :documentation "Number of rows in the input-vector.")
+   (num-input-features :initarg :num-input-features
+                       :accessor num-input-features
+                       :type fixnum
+                       :documentation "Number of columns (features) in the input data. ")
    (input-vector :initarg :input-vector
                  :accessor input-vector
-                 :type vector
+                 :type simple-array
                  :documentation "Input vector (Raw data) for unsupervised clustering.")
    (num-iteration :initarg :num-iteration
                   :initform 100
                   :accessor num-iteration
                   :type fixnum)
    (learning-rate-start :initarg :learning-rate-start
-                        :initform 0.5d0
+                        :initform 0.5
                         :accessor learning-rate-start
-                        :type double-float)
+                        :type single-float)
    (learning-rate-end :initarg :learning-rate-end
-                        :initform 0.05d0
+                        :initform 0.05
                         :accessor learning-rate-end
-                        :type double-float)
+                        :type single-float)
    (neighborhood-distance-measure :initarg :neighborhood-distance-measure
                                   :initform 'pseudo-gaussian
                                   :accessor neighborhood-distance-measure
@@ -92,10 +101,10 @@
 
 
 
-(defun make-neuron (x-pos y-pos input-vector-size &key (low *low*)
-                                                    (high *high*)
-                                                    (type 'double-float)
-                                                    (weight-type 'random))
+(defun make-neuron (x-pos y-pos num-input-features &key (low *low*)
+                                                     (high *high*)
+                                                     (type 'double-float)
+                                                     (weight-type 'random))
   "Constructor function for neuron class.
 x-pos - SOM MAP, neuron x-position
 y-pos - SOM MAP, neuron y-position
@@ -103,9 +112,9 @@ input-vector-size - Defines the weigh-vector size
 "
   (with-gensyms (neuron)
     (when (equal weight-type 'random)
-      (let ((weight-vector (create-random-vector input-vector-size :low low
-                                                                   :high high
-                                                                   :type type)))
+      (let ((weight-vector (create-random-vector num-input-features :low low
+                                                                    :high high
+                                                                    :type type)))
         (setf neuron
               (make-instance 'neuron
                              :weight-vector weight-vector
@@ -115,10 +124,10 @@ input-vector-size - Defines the weigh-vector size
 
 
 
-(defmethod create-som-map (map-size input-vector-size &key (low *low*)
-                                               (high *high*)
-                                               (type 'double-float)
-                                               (weight-type 'random))
+(defmethod create-som-map (map-size num-input-features &key (low *low*)
+                                                         (high *high*)
+                                                         (type 'double-float)
+                                                         (weight-type 'random))
   "Creates a SOM MAP."
   (unless (listp map-size)
     (error "The map size must be a list."))
@@ -126,15 +135,13 @@ input-vector-size - Defines the weigh-vector size
     (let ((row (first map-size))
           (col (second map-size)))
       (setf som-map (make-array `(,row ,col)))
-      ;;(format t "~&~A: ~A, ~A: ~A~&~%" "row" row "col" col)
       (dotimes (i row)
         (dotimes (j col)
-          ;;(format t "~&~A: ~A, ~A: ~A~&~%" "row" i "col" j)
           (setf (aref som-map i j)
-                (make-neuron i j input-vector-size :low low
-                                                   :high high
-                                                   :type type
-                                                   :weight-type weight-type)))))
+                (make-neuron i j num-input-features :low low
+                                                    :high high
+                                                    :type type
+                                                    :weight-type weight-type)))))
     som-map))
 
 
@@ -151,6 +158,9 @@ input-vector-size - Defines the weigh-vector size
   "Constructor function for som class.
 map-size - SOM Map row and column size.
 input-vector - Raw data."
+  (declare (type (simple-array * (* *)) input-vector)
+           (list map-size)
+           (fixnum num-iteration))
   (with-gensyms (som)
     (setf som
           (make-instance 'som
@@ -168,10 +178,11 @@ input-vector - Raw data."
                          :weight-value-type weight-value-type))
     som))
 
+
 (defun create-map (som-obj)
   "High level function to create a som map."
   (create-som-map (map-size som-obj)
-                  (input-size som-obj)
+                  (num-input-features som-obj)
                   :weight-type (weight-initialization som-obj)
                   :type (weight-value-type som-obj)
                   :high (random-high som-obj)
@@ -190,11 +201,20 @@ input-vector - Raw data."
 
 
 
-(defmethod initialize-instance :after ((som-obj som) &key)
+(defun set-input-parameters (som-obj)
+  "Initialize the input parameters."
   (setf (input-size som-obj)
-        (array-dimension (input-vector som-obj) 1))
+        (array-dimension (input-vector som-obj) 0))
+  (setf (num-input-features som-obj)
+        (array-dimension (input-vector som-obj) 1)))
+
+
+(defmethod initialize-instance :after ((som-obj som) &key)
+  (set-input-parameters som-obj)
   (setf (neurons som-obj)
         (create-map som-obj))
+  (setf (num-neurons som-obj)
+        (array-total-size (neurons som-obj)))
   (set-neighborhood-radius-boundary som-obj))
 
 
@@ -268,7 +288,7 @@ high - maximum value"
   (let ((random-idx (random-state:random-int
                      *generator*
                      0
-                     (array-dimension input-vector 0))))
+                     (1- (array-dimension input-vector 0)))))
     (values
      (row-major-aref input-vector random-idx)
      random-idx)))
@@ -296,8 +316,6 @@ high - maximum value"
         (format t "~&~A: ~A" "random-data" random-data)
         (format t "~&~A: ~A" "index" index))
       index))
-
-
 
 
 
@@ -372,17 +390,17 @@ high - maximum value"
      (sum (expt (abs (row-major-aref matrix i)) 2)))))
 
 
-
 (defun get-bmu (som-obj datapoint)
   "Returns the best matching unit for given som-obj."
   (let ((neurons-array (neurons som-obj)))
     (iter
       (for i :from 0 :below (array-total-size neurons-array))
-      (collect (euclidean-distance (weight-vector (row-major-aref neurons-array i))
+      (collect (vector-euclidean-distance (weight-vector (row-major-aref neurons-array i))
                                           datapoint) into result result-type 'vector)
-      (finally (return (multiple-value-bind (location min-value)
-                           (aops:argmin result)
-                         (vector location min-value)))))))
+      (finally (return (get-bmu-coordinates som-obj
+                                            (multiple-value-bind (location min-value)
+                                                (aops:argmin result)
+                                              (vector location min-value))))))))
 
 
 
@@ -401,11 +419,29 @@ bmu-location - Result get-bmu function."
       (vector x y))))
 
 
+(defun get-all-weight-vectors (som-obj)
+  "Returns the array of weight vector of the som-obj."
+  (let ((neurons-array (neurons som-obj)))
+    (iter
+      (for i :below (num-neurons som-obj))
+      (collect (weight-vector (row-major-aref neurons-array i))
+        into result result-type 'vector)
+      (finally (return (aops:combine result))))))
 
+
+(defun get-bmus (som-obj)
+  "Returns the array containing coordinates of the BMUs for all the input-vector elements."
+  (with-gensyms (bmus)
+    (iter
+      (for i :below (input-size som-obj))
+      (for datapoint = (aops:sub (input-vector som-obj) i))
+      (collect (setf bmus
+                     (get-bmu som-obj datapoint)) into result result-type 'vector)
+      (finally (return (aops:combine result))))))
 
 
 (defun calculate-learning-rate (som-obj curr-iteration mode)
-  ""
+  "Returns the learning rate for the given mode and current iteration"
   (decreasing-rate (learning-rate-start som-obj)
                    (learning-rate-end som-obj)
                    (num-iteration som-obj)
@@ -414,14 +450,12 @@ bmu-location - Result get-bmu function."
 
 
 (defun calculate-neighborhood-function (som-obj curr-iteration mode)
-  "doc"
+  "Returns the neighborhood function for the given mode and current iteration."
   (decreasing-rate (radius-max som-obj)
                    (radius-min som-obj)
                    (num-iteration som-obj)
                    curr-iteration
                    :mode mode))
-
-
 
 
 (defun calculate-neighborhood-distance (som-obj winner-neuron-position)
@@ -430,7 +464,7 @@ bmu-location - Result get-bmu function."
          (num-neurons (array-total-size neurons-array)))
     (iter
       (for i :from 0 :below num-neurons)
-      (collect (euclidean-distance 
+      (collect (vector-euclidean-distance 
                 (vector (x-position (row-major-aref neurons-array i))
                         (y-position (row-major-aref neurons-array i)))
                 (vector (aref winner-neuron-position 0)
@@ -451,7 +485,6 @@ bmu-location - Result get-bmu function."
                             (calculate-neighborhood-function som-obj curr-iteration mode)
                             2)))))
       result-type 'vector))))
-
 
 
 (defun update-weight (som-obj datapoint neighborhood-weight learning-rate)
@@ -476,51 +509,69 @@ bmu-location - Result get-bmu function."
       (let* ((dp (random-sample-data (input-vector som-obj)))
              (datapoint (aops:sub (input-vector som-obj) dp))
              (bmu (get-bmu som-obj datapoint))
-             (bmu-location (get-bmu-coordinates som-obj bmu))
              (learning-rate (calculate-learning-rate som-obj i 'exp))
-             (neighborhood-weight (calculate-neighborhood-weight som-obj bmu-location i 'exp)))
-        (update-weight som-obj datapoint neighborhood-weight learning-rate))
-      (format t "~&~A: ~A" "Completed Iteration" i))
+             (neighborhood-weight (calculate-neighborhood-weight som-obj bmu i 'exp)))
+        (update-weight som-obj datapoint neighborhood-weight learning-rate)
+        (vgplot:plot (aops:flatten (get-bmus som-obj)) "+k;dotted style;")
+        )
+      
+      (format t "~&~A: ~A" "Completed Iteration" i)
+      )
     (setf (trained-p som-obj) t)
     (format t "~&~A." "Completed Training")))
 
 
 
-(defparameter *sample-data* (generate-random-sample-data '(20 39) :low 0
-                                                                  :high 1
-                                                                  :type 'double-float))
+(defparameter *sample-data* (generate-random-sample-data '(500 3) :low -5
+                                                                   :high 5
+                                                                   :type 'double-float))
 
 
-(defparameter *test* (make-som '(15 15) *sample-data* 100 :learning-rate-start 1.0
-                                                          :learning-rate-end 0.05))
-
-
-
-(time (train *test*))
+;; (defparameter *test* (make-som '(168 13) *lift* 10 :learning-rate-start 0.9
+;;                                                    :learning-rate-end 0.2))
 
 
 
-(defparameter *res* (get-bmu *test* (aops:sub *sample-data* 1)))
-(defparameter *bmu-location* (get-bmu-coordinates *test* *res*))
-(print-som-object *test*)
-
-(defparameter *ll* (calculate-learning-rate *test* 1 'custom-exp))
-(calculate-neighborhood-function *test* 1 'linear)
 
 
-(defparameter *dist* (calculate-neighborhood-distance *test* *bmu-location*))
-(defparameter *dist-wg* (calculate-neighborhood-weight *test* *bmu-location* 1 'linear))
-
-
-(defparameter *dp* (random-sample-data *sample-data*))
-(defparameter *datapoint* (aops:sub *sample-data* *dp*))
-
-(update-weight *test* *datapoint* *dist-wg* *ll*)
-(print-som-object *test*)
+;; (time (train *test*))
 
 
 
-(defun get-all-weight-vectors (som-obj)
-  "doc"
-  
-  )
+;; (defparameter *res* (get-bmu *test* (aops:sub *mfcc-mean* 0)))
+;; (vgplot:plot (aops:flatten (get-bmus *test*)) "+k;dotted style;")
+;; (print-som-object *test*)
+
+;; (defparameter *ll* (calculate-learning-rate *test* 1 'custom-exp))
+;; (calculate-neighborhood-function *test* 1 'linear)
+
+
+;; (defparameter *dist* (calculate-neighborhood-distance *test* *bmu-location*))
+;; (defparameter *dist-wg* (calculate-neighborhood-weight *test* *bmu-location* 1 'linear))
+
+
+;; (defparameter *dp* (random-sample-data *sample-data*))
+;; (defparameter *datapoint* (aops:sub *sample-data* *dp*))
+
+
+;; (print-som-object *test*)
+;; (defparameter *dat* (aops:flatten (transpose% (get-all-weight-vectors *test*))))
+;(defparameter *ff* (aops:flatten *mfcc-with-deltas*))
+;; (array-dimensions (get-all-weight-vectors *test*))
+;; (defparameter *bmus* (get-bmus *test*))
+;; (with-session (:geometry "800x800")
+;;   (let ((*command-stream* (make-broadcast-stream *command-stream*
+;;                                                  *standard-output*)))    
+;;     (plot ()
+;;       (data nil))))
+
+
+;; (defparameter *x* (aops:sub (aops:split (transpose% *bmus*) 1) 0))
+;; (defparameter *y* (aops:sub (aops:split (transpose% *bmus*) 1) 1))
+;; (vgplot:plot (aops:flatten *bmus*)":r;dotted style;")
+
+(defun simple-plot (som-obj)
+  (with-session ()
+    (plot ()
+      (data (get-all-weight-vectors som-obj)))))
+

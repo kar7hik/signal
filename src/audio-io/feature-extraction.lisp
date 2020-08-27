@@ -25,7 +25,7 @@
 
 (in-package #:signal)
 
-(defparameter *frame-size* 0.020
+(defparameter *frame-size* 0.025
   "Short frame size in ms.")
 
 (defparameter *frame-stride* 0.01
@@ -50,58 +50,58 @@
    (frame-size :initarg :frame-size
                :initform *frame-size*
                :accessor frame-size
-               :type 'single-float)
+               :type single-float)
    (frame-stride :initarg :frame-stride
                  :initform *frame-stride*
                  :accessor frame-stride
-                 :type 'single-float)
+                 :type single-float)
    (frame-length :initarg :frame-length
                  :accessor frame-length
-                 :type 'fixnum)
+                 :type fixnum)
    (sample-rate :initarg :sample-rate
                 :initform *sample-rate*
                 :accessor sample-rate
-                :type 'double-float)
+                :type double-float)
    (total-number-of-frames :initarg :total-number-of-frames
                            :accessor total-number-of-frames
-                           :type 'fixnum)
+                           :type fixnum)
    (pre-emphasis :initarg :pre-emphasis
                  :initform 0.97
                  :accessor pre-emphasis
-                 :type 'single-float)
+                 :type single-float)
    (emphasized-signal :initarg :emphasized-signal
                       :accessor emphasized-signal
                       :type (simple-array *))
    (frame-step :initarg :frame-step
                :accessor frame-step
-               :type 'fixnum)
+               :type fixnum)
    (audio-data-length :initarg :audio-data-length
                       :accessor audio-data-length
-                      :type 'fixnum)
+                      :type fixnum)
    (pad-audio-length :initarg :pad-audio-length
                      :accessor pad-audio-length
-                     :type 'integer)
+                     :type integer)
    (padding-required :initarg :padding-required
                      :accessor padding-required
-                     :type 'integer)
+                     :type integer)
    (padded-frames :initarg :padded-frames
                   :accessor padded-frames
                   :type (simple-array *))
    (filtered-frames :initarg :padded-frames
                     :accessor filtered-frames
-                    :type (simple-array double-float *))
+                    :type (simple-array single-float *))
    (splitted-frames :initarg :splitted-frames
                     :accessor splitted-frames
-                    :type (simple-array double-float *))
+                    :type (simple-array single-float *))
    (fft-applied-p :initarg :fft-applied-p
                     :initform nil
-                    :type 'boolean
+                    :type boolean
                     :accessor fft-applied-p
                     :documentation "Flag to check whether the FFT has been applied already.")
    (NFFT :initarg :NFFT
          :initform *nfft*
          :accessor NFFT
-         :type 'integer
+         :type integer
          :documentation "Fourier Transform bin length.")
    (fft-result :initarg :fft-result
                :type (simple-array single-float)
@@ -110,7 +110,7 @@
    (power-spectrum :initarg :power-spectrum
                    :accessor power-spectrum
                    :documentation "List of simple arrays - power spectrum values of fft-results."
-                   :type (simple-array double-float *))
+                   :type (simple-array single-float *))
    (energy :initarg :energy
            :accessor energy
            :documentation "Vector containing energy values. Sum of rows of power spectrum."
@@ -118,13 +118,14 @@
   
   (:documentation "Signal processing Class"))
 
-(defun make-signal-processing (audio-data num-channels)
+(defun make-signal-processing (audio-data num-channels sample-rate)
   "Constructor function for Signal processing class."
   (alexandria:with-gensyms (signal-processing-obj)
     (setf signal-processing-obj
           (make-instance 'signal-processing
                          :audio-data audio-data
-                         :num-channels num-channels))
+                         :num-channels num-channels
+                         :sample-rate sample-rate))
     signal-processing-obj))
 
 
@@ -134,38 +135,38 @@
    (num-filters :initarg :num-filters
                 :initform *num-filters*
                 :accessor num-filters
-                :type 'fixnum)
+                :type fixnum)
    (bins :initarg :bins
          :accessor bins
          :type (simple-array *))
    (num-cepstrum :initarg :num-cepstrum
                  :initform *num-cepstrum*
                  :accessor num-cepstrum
-                 :type 'fixnum)
+                 :type fixnum)
    (min-freq :initarg :min-freq
              :initform 0.0
              :accessor min-freq
-             :type 'single-float)
+             :type single-float)
    (max-freq :initarg :max-freq
              :initform 0.0
              :accessor max-freq
-             :type 'single-float)
+             :type single-float)
    (cepstrum-lifter :initarg :cepstrum-lifter
                     :initform *cepstrum-lifter*
                     :accessor cepstrum-lifter
-                    :type 'fixnum)
+                    :type fixnum)
    (filter-banks :initarg :filter-banks
                  :accessor filter-banks
-                 :type (simple-array double-float *))
+                 :type (simple-array single-float *))
    (raw-mel-features :initarg :raw-mel-features
                      :accessor raw-mel-features
-                     :type (simple-array double-float *))
+                     :type (simple-array single-float *))
    (log-mel-features :initarg :log-mel-features
                      :accessor log-mel-features
-                     :type (simple-array double-float *))
+                     :type (simple-array single-float *))
    (dct-mel-values :initarg :dct-mel-values
                    :accessor dct-mel-values
-                   :type (simple-array double-float *))
+                   :type (simple-array single-float *))
    (reduced-mel-values :initarg :reduced-mel-values
                        :accessor reduced-mel-values
                        :type (simple-array single-float *)))  
@@ -209,12 +210,13 @@
 (defmethod pad-audio-with-zeros ((signal-processing-obj signal-processing))
   (setf (padded-frames signal-processing-obj)
         (concatenate 'vector (emphasized-signal signal-processing-obj)
-                     (zeros (padding-required signal-processing-obj) :type 'double-float))))
+                     (zeros (padding-required signal-processing-obj) :type 'single-float))))
 
 
 (defmethod set-fft-result ((signal-processing-obj signal-processing))
   (setf (fft-result signal-processing-obj)
         (apply-fft-to-audio (filtered-frames signal-processing-obj)
+                            (sample-rate signal-processing-obj)
                             :nfft (nfft signal-processing-obj))))
 
 
@@ -242,7 +244,9 @@
   (set-filtered-frames signal-processing-obj)
   (set-fft-result signal-processing-obj)
   (set-power-spectrum signal-processing-obj)
-  (set-energy signal-processing-obj))
+  (set-energy signal-processing-obj)
+  )
+
 
 
 (defun find-frequency-bins (mfcc-obj)
@@ -250,7 +254,9 @@
         (coerce-sequence
          (get-frequency-bin (mel->frequency-sequence (fbank (min-freq mfcc-obj)
                                                             (max-freq mfcc-obj)
-                                                            (+ 2 (num-filters mfcc-obj)))))
+                                                            (+ 2 (num-filters mfcc-obj))))
+                            :nfft (nfft (audio-obj mfcc-obj))
+                            :sample-rate (sample-rate (audio-obj mfcc-obj)))
                          'single-float)))
 
 (defmethod initialize-instance :after ((mfcc-obj mfcc) &key)
@@ -261,20 +267,44 @@
   (set-dct-mel-features mfcc-obj))
 
 
-(defparameter *wav-file* "/home/karthik/quicklisp/local-projects/signal/music-mono-1.wav")
+
+(defun mfcc-with-deltas (mfcc-obj)
+  (let* ((mfcc (apply-liftering-to-dct mfcc-obj))
+         (delta (delta mfcc 2))
+         (delta-1 (delta delta 2)))
+    (aops:stack 1
+                mfcc
+                delta
+                delta-1)))
+
+
+(defparameter *wav-file* (create-data-file-path "vowel.wav"))
 ;; (defparameter *wav-file* "/home/karthik/quicklisp/local-projects/signal/music-mono.wav")
 ;; (defparameter *wav-file* "/home/karthik/quicklisp/local-projects/signal/music-stereo.wav")
 
+
+
 ;; (time (defparameter *wav* (load-wav-file *wav-file*)))
-;; ;;; ;TODO: chunk-audio-data
+
 ;; (time (defparameter *sig* (make-signal-processing (audio-data *wav*)
-;;                                                   (num-channels *wav*))))
+;;                                                   (num-channels *wav*)
+;;                                                   (sample-rate *wav*))))
 ;; (time (defparameter *mfcc-obj* (make-mfcc *sig*)))
 ;; (time (defparameter *lift* (apply-liftering-to-dct *mfcc-obj*)))
-;; (time (defparameter *log-mean* (get-mean-normalization (log-mel-features *mfcc-obj*))))
+;; (time (defparameter *filter-mean* (get-mean-normalization (log-mel-features *mfcc-obj*))))
 ;; (time (defparameter *mfcc-mean* (get-mean-normalization *lift*)))
 ;; (time (defparameter *final* (delta *lift* 2)))
+;; (time (defparameter *final-1* (delta *final* 2)))
 
+
+
+;; (defparameter *mfcc-with-deltas* (mfcc-with-deltas *mfcc-obj*))
+;; (array-dimensions *mfcc-with-deltas*)
+;; 
+;; (record-audio :record-time 10
+;;               :save-to-file t
+;;               :audio-filename (create-result-file-path "audio-file.wav"))
+;; (play-wav-audio (create-result-file-path "audio-file.wav"))
 
 
 

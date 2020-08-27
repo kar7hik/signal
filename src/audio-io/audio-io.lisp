@@ -30,27 +30,25 @@
 (defclass wave-signal ()
   ((duration :initarg :duration
              :initform *seconds*
-             :accessor duration
-             :type 'single-float)
+             :accessor duration)
    (sample-rate :initarg :sample-rate
                 :initform *sample-rate*
                 :accessor sample-rate
-                :type 'double-float)
+                :type double-float)
    (num-channels :initarg :num-channels
                  :accessor num-channels
                  :initform *num-channels*
-                 :type 'integer)
+                 :type integer)
    (sample-interval :initarg :sample-interval
                     :initform *sample-interval*
-                    :accessor sample-interval
-                    :type 'single-float)
+                    :accessor sample-interval)
    (sample-points :initarg :sample-points
                   :initform 0
                   :accessor sample-points
-                  :type 'integer)
-   (audio-buffer-size :initform +audio-buffer-size+
+                  :type integer)
+   (audio-buffer-size :initform *audio-buffer-size*
                       :reader audio-buffer-size
-                      :type 'integer))
+                      :type integer))
   (:documentation "Wave class - Audio Signal"))
 
 
@@ -59,41 +57,41 @@
   ((chunk-id :accessor chunk-id
              :initarg :chunk-id
              :initform "RIFF"
-             :type 'string)
+             :type string)
    (chunk-size :accessor chunk-size
                :initarg :chunk-size
                :initform 0)
    (riff-format :accessor riff-format
                 :initform "WAVE"
                 :initarg :riff-format
-                :type 'string)
+                :type string)
 
    ;; fmt subchunk:
    (subchunk1-id :reader subchunk1-id
                  :initform "fmt ")
    (subchunk1-size :reader subchunk1-size
                    :initform 16
-                   :type 'integer)
+                   :type integer)
    (audio-format :reader audio-format
                  :initform 1)
    (byte-rate :accessor byte-rate
               :initarg :byte-rate
-              :initform 0d0)
+              :initform 0.0)
    (block-align :accessor block-align
                 :initarg :block-align)
    (bits-per-sample :accessor bits-per-sample
                     :initarg :bits-per-sample
                     :initform 16
-                    :type 'integer)
+                    :type integer)
 
    ;; data subchunk
    (subchunk2-id :reader subchunk2-id
                  :initform "data"
-                 :type 'string)
+                 :type string)
    (audio-sample-size :accessor audio-sample-size
                       :initarg :audio-sample-size
                       :initform 0
-                      :type 'integer)
+                      :type integer)
    (subchunk2-size :accessor subchunk2-size
                    :initarg :subchunk2-size))
   (:documentation "Wave Header."))
@@ -149,7 +147,7 @@
   "Constructor function for the class audio from file."
   (format t "~20A: ~10d~%" "sample audio-data" (array-dimensions audio-data))
   (make-instance 'audio-from-file :duration duration
-                                  :sample-rate sample-rate
+                                  :sample-rate (coerce sample-rate 'double-float) 
                                   :bits-per-sample bits-per-sample
                                   :audio-data audio-data
                                   :audio-length audio-length
@@ -164,7 +162,7 @@
    (frequency :initarg :frequency
               :initform *frequency*
               :accessor frequency
-              :type 'double-float))
+              :type single-float))
   (:documentation "Wave object created using a function."))
 
 
@@ -231,7 +229,8 @@
                              :idx idx)
     (when save-to-file
       ;; (save-to-file audio-filename source-buffer)
-      (save-as-wav-file source-buffer audio-filename))
+      (save-as-wav-file source-buffer audio-filename)
+      )
     (when plot-data
       (plot-signal source-buffer plot-filename :x-label "time"
                                                :y-label "amplitude"
@@ -241,9 +240,8 @@
       source-buffer)))
 
 
-
 #+test
-(record-audio :record-time 2
+(record-audio :record-time 3
               :save-to-file t
               :audio-filename "new-mic.wav"
               :plot-data nil
@@ -273,7 +271,7 @@
                                   num-channels
                                   num-channels
                                   :sample-format :float
-                                  :sample-rate (sample-rate wav-file)
+                                  :sample-rate (coerce (sample-rate wav-file) 'double-float)
                                   :frames-per-buffer (audio-buffer-size wav-file))
         (format t "~& <<< Starting Playback >>> ~%")
         (format t "~& ~20A: ~20A ~%" "buffer-len" buffer-len)

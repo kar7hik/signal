@@ -61,7 +61,7 @@
           (format t "~20A: ~10d~&" "(2) duration" duration))
         (setf data-size (find-audio-length data channels))
         (make-audio-from-file :duration duration
-                              :sample-rate (coerce sample-rate 'double-float)
+                              :sample-rate (coerce sample-rate 'single-float)
                               :bits-per-sample bits-per-sample
                               :audio-data data
                               :audio-length data-size

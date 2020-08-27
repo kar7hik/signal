@@ -37,25 +37,26 @@
 ;;
 ;; del_R = f_s / N_fft
 ;;
-(defun dft-analysis-core (buffer &key (save-to-file nil)
-                                   (audio-filename nil)
-                                   (plot-data nil)
-                                   (plot-filename nil)
-                                   (verbose nil)
-                                   (linespace '() linespace-supplied-p))
+
+(defun dft-analysis-core (buffer sample-rate &key (save-to-file nil)
+                                               (audio-filename nil)
+                                               (plot-data nil)
+                                               (plot-filename nil)
+                                               (verbose nil)
+                                               (linespace '() linespace-supplied-p))
   "Core function carrying out discrete fourier transform."
   (let* ((padded-array (pad-power-of-two buffer :verbose verbose))
          (raw-complex (napa-fft:rfft padded-array))
-         (freq (range 0 :stop (/ *sample-rate* 2)
-                        :step (/ *sample-rate*
+         (freq (range 0 :stop (/ sample-rate 2)
+                        :step (/ sample-rate
                                 (array-total-size padded-array))))
          (freq-magnitude (make-array  (/ (array-total-size padded-array) 2)
-                                     ;;:element-type 'double-float
-                                     )))
+                                      :element-type 'single-float)))
     (iter
       (for i :index-of-vector freq-magnitude)
-      (setf (aref freq-magnitude i) (abs (aref raw-complex i))))
-
+      (setf (aref freq-magnitude i)
+            (coerce (abs (aref raw-complex i)) 'single-float)))
+    
     (when save-to-file
       (save-as-wav-file buffer audio-filename))
 
@@ -151,19 +152,19 @@
     "Hanning window -- ref *Discrete-time Signal Processing - Alan V. Oppenheim, Ronald W. Schafer.*
 idx - index of the window
 window-len - length of the filter window" 
-  (* 0.5 (- 1.0
-            (cos (/ (* 2 pi idx)
-                        (1- window-len))))))
+  (coerce (* 0.5 (- 1.0
+                    (cos (/ (* 2 pi idx)
+                            (1- window-len))))) 'single-float))
 
 
 (defun hamming (idx window-len)
   "Hamming window -- ref *Discrete-time Signal Processing - Alan V. Oppenheim, Ronald W. Schafer.*
 idx - index of the window
 window-len - length of the filter window" 
-  (- 0.54
-     (* 0.46
-        (cos (/ (* 2 pi idx)
-                (1- window-len))))))
+  (coerce (- 0.54
+             (* 0.46
+                (cos (/ (* 2 pi idx)
+                        (1- window-len))))) 'single-float))
 
 
 (defun triangular-window (begin middle end)

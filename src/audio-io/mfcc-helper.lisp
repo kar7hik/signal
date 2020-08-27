@@ -12,12 +12,12 @@
 
 (defun frequency-to-mel-scale (freq)
   "Function to convert value from frequency to mel-scale."
-  (* 1127 (log (1+ (/ freq 700)) (exp 1))))
+  (the single-float (* 1127 (log (1+ (/ freq 700)) (exp 1)))))
 
 
 (defun mel-scale-to-frequency (mel)
   "Function to convert value from mel-scale to frequency."
-  (* 700 (- (exp (/ mel 1127)) 1)))
+  (the single-float (* 700 (- (exp (/ mel 1127)) 1))))
 
 
 (defun fbank (min-freq max-freq n-fbank)
@@ -32,7 +32,7 @@
     (collect (mel-scale-to-frequency i) result-type 'vector)))
 
 
-(defun get-frequency-bin (seq &key (nfft *nfft*) (sample-rate *sample-rate*))
+(defun get-frequency-bin (seq &key (nfft *nfft*) (sample-rate nil))
   "Returns the bin containing frequencies."
   (iter
     (for elt in-sequence seq)
@@ -64,18 +64,16 @@
   (with-gensyms (log-banks)
     (let ((row (get-row filter-banks))
           (col (get-col filter-banks)))
-      (setf log-banks (make-array `(,row ,col) :element-type 'double-float
-                                               :initial-element 0d0))
+      (setf log-banks (make-array `(,row ,col)))
       (iter
         (for i :from 0 :below row)
         (iter
           (for j :from 0 :below col)
           (when (zerop (aref filter-banks i j))
-            (setf (aref filter-banks i j) (coerce most-negative-double-float 'double-float)))
+            (setf (aref filter-banks i j) 2.2e-17))
           (setf (aref log-banks i j)
                 (log (aref filter-banks i j)))))
       log-banks)))
-
 
 
 (defun get-dct-mel-features (dct-mel-values num-cepstrum)
@@ -83,7 +81,7 @@
         (reduced-dct (compute (fuse dct-mel-values))))
     (iter
       (for i :from 0 :below row)
-      (collect (aops:subvec (aops:sub reduced-dct i) 0  num-cepstrum) result-type 'vector))))
+      (collect (aops:subvec (compute (petalisp:slice reduced-dct i)) 0  num-cepstrum) result-type 'vector))))
 
 
 
@@ -92,7 +90,9 @@
         (coerce-sequence
          (get-frequency-bin (mel->frequency-sequence (fbank (min-freq mfcc-obj)
                                                             (max-freq mfcc-obj)
-                                                            (+ 2 (num-filters mfcc-obj)))))
+                                                            (+ 2 (num-filters mfcc-obj))))
+                            :nfft (nfft (audio-obj mfcc-obj))
+                            :sample-rate (sample-rate (audio-obj mfcc-obj)))
          'single-float)))
 
 
@@ -102,11 +102,12 @@
 
 
 (defun set-log-mel-features (mfcc-obj)
-  (let* ((raw-mult (matrix-multiplication (power-spectrum (audio-obj mfcc-obj))
-                                          (compute (transpose (filter-banks mfcc-obj)))))
+  (let* ((raw-mult (matrix-multiply (power-spectrum (audio-obj mfcc-obj))
+                                    (transpose% (filter-banks mfcc-obj))))
          (log-mel (get-log-mel-features raw-mult)))
     (setf (raw-mel-features mfcc-obj) raw-mult
           (log-mel-features mfcc-obj) log-mel)))
+
 
 
 (defun set-dct-mel-features (mfcc-obj)
@@ -122,8 +123,7 @@
   (let ((row (get-row log-filter-banks)))
     (iter
       (for i :from 0 :below row)
-      (collect (dct:dct (aops:sub log-filter-banks i)) result-type 'vector))))
-
+      (collect (dct:dct (compute (petalisp:slice log-filter-banks i))) result-type 'vector))))
 
 
 ;;; Liftering:
@@ -298,18 +298,17 @@
 
 
 ;; (time (defparameter *fin* (delta-1 *lift* 2)))
-(declaim (ftype (function ((simple-array float *)) (simple-array * *)) find-energy))
+(declaim (ftype (function ((simple-array * *)) (simple-array * *)) find-energy))
 (defun find-energy (power-spectrum-array)
   (alexandria:with-gensyms (energy-result)
     (let ((array-size (get-row power-spectrum-array)))
       (declare (type fixnum array-size))
       (setf energy-result
             (make-array array-size
-                        :element-type 'double-float
-                        :initial-element 0d0))
+                        :element-type 'single-float))
       (dotimes (i array-size)
         (setf (aref energy-result i)
-              (the double-float (reduce #'+ (aops:sub power-spectrum-array i))))))
+              (reduce #'+ (compute (petalisp:slice power-spectrum-array i))))))
     energy-result))
 
 

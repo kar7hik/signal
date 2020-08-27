@@ -33,7 +33,7 @@
   "Pi value coerced into single float.")
 (defconstant +tau+ (* 2 +pi+)
   "2-PI Value")
-(defconstant +audio-buffer-size+ 1024
+(defparameter *audio-buffer-size* 1024
   "The number of samples in the audio buffer.")
 
 
@@ -41,17 +41,17 @@
 ;; Signal Processing:
 (defparameter *sample-rate* 44100d0
   "Default audio sample rate.")
-(defparameter *seconds* 5
+(defparameter *seconds* 5.0
   "Default time period")
-(defparameter *sample-interval* 1
+(defparameter *sample-interval* 1.0
   "Default time interval.")
 (defparameter *num-channels* 2
   "Default number of channels.")
-(defparameter *frequency* 440
+(defparameter *frequency* 440.0
   "Default tone frequency.")
 
 ;; For parallel processing:
-(defparameter *num-worker-threads* 8
+(defparameter *num-worker-threads* 16
   "Number of worker threads for lparallel.")
 
 ;; Directory variables:
@@ -62,7 +62,7 @@
                                                    (user-homedir-pathname)))
 (defparameter *data-directory* "data/")
 (defparameter *local-data-directory* (merge-pathnames *data-directory* *current-directory*))
-(defparameter *result-directory* "result/")
+(defparameter *result-directory* "results/")
 (defparameter *local-result-directory* (merge-pathnames *result-directory* *current-directory*))
 
 ;; Self-Organizing:

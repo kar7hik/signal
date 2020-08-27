@@ -44,8 +44,8 @@
 
 (defun set-padding-required (signal-processing-obj)
   (setf (padding-required signal-processing-obj)
-        (- (pad-audio-length signal-processing-obj)
-           (audio-data-length signal-processing-obj))))
+        (abs (- (pad-audio-length signal-processing-obj)
+                (audio-data-length signal-processing-obj)))))
 
 
 (defun set-splitted-frames (signal-processing-obj)
@@ -107,7 +107,6 @@
     (nreverse result-list-frames)))
 
 
-
 ;; TODO: Replace the following in split-padded-audio-into-frames function
 ;; (append (subseq '(0 1 2 3 4) 2 4) (subseq '(0 1 2 3 4) 2 4))
 ;; (concatenate 'vector (aops:subvec #(0 1 2 3 4) 2 4) (aops:subvec #(0 1 2 3 4) 2 4))
@@ -127,7 +126,7 @@
   "Function that applies the selected type of window to the frame."
   (let* ((frame-len (length frame))
          (filtered-frame (make-array frame-len
-                                     :element-type 'double-float)))
+                                     :element-type 'single-float)))
     (iter
       (for i :from 0 :below frame-len)
       (setf (aref filtered-frame i)
@@ -139,61 +138,55 @@
 (defun apply-filter-to-audio (splitted-frames &key (filter-function 'hamming))
   (iter
     (for i :from 0 :below (get-row splitted-frames))
-    (collect (apply-filter-to-frame (aops:sub splitted-frames i)
+    (collect (apply-filter-to-frame (compute (petalisp:slice splitted-frames i))
                                     :filter-function filter-function))))
 
 
 (defun pad-frame (frame pad-length)
-  (declare (type (simple-array * *) frame))
+  (declare (type (simple-array * *) frame)
+           (fixnum pad-length))
   (alexandria:with-gensyms (pad-result)
-    (setf pad-result
-          (make-array pad-length))
-    (dotimes (i (length frame))
-      (setf (aref pad-result i)
-            (aref frame i)))
+    (let ((elem-type (array-element-type frame))
+          (row-size (the fixnum (array-total-size frame))))
+      (declare (fixnum row-size))
+      (setf pad-result
+            (make-array pad-length :element-type elem-type
+                                   :initial-element (coerce 0 elem-type)))
+      (dotimes (i row-size)
+        (declare (fixnum i))
+        (setf (row-major-aref pad-result i)
+              (row-major-aref frame i))))
     pad-result))
 
-
-(defun pad-frame* (frame pad-length &key (type 'single-float))
-  ;; (declare (type (simple-array * *) frame))
-  (alexandria:with-gensyms (pad-result)
-    (setf pad-result
-          (make-array pad-length
-                      :element-type 'single-float
-                      :initial-element (coerce 0 type)))
-    (dotimes (i (get-row frame))
-      (setf (aref pad-result i)
-            (coerce (aref frame i) type)))
-    pad-result))
 
 
 ;;; Applying FFT:
-(defun apply-fft-to-frame (frame &key (nfft nil nfft-supplied-p))
+(defun apply-fft-to-frame (frame sample-rate &key (nfft nil nfft-supplied-p))
   "Given a frame, this function applies FFT to it."
   (alexandria:with-gensyms (fft-result)
     (if nfft-supplied-p
         (setf fft-result
-              (dft-analysis-core (pad-frame* frame nfft)))
+              (dft-analysis-core (pad-frame frame nfft) sample-rate))
         (setf fft-result
-              (dft-analysis-core (pad-power-of-two frame))))
+              (dft-analysis-core (pad-power-of-two frame) sample-rate)))
     fft-result))
 
 
-(defun apply-fft-to-audio (filtered-audio-data  &key (nfft *nfft*))
+(defun apply-fft-to-audio (filtered-audio-data sample-rate &key (nfft *nfft*))
   "Given a audio-data, the function returns the FFT of the it."
   (let ((total-num-frames (get-row filtered-audio-data)))
     (iter
       (for i :from 0 :below total-num-frames)
-      (collect (apply-fft-to-frame (aops:sub filtered-audio-data i) :nfft nfft)))))
-
-
+      (collect (apply-fft-to-frame
+                (compute
+                 (petalisp:slice filtered-audio-data i)) sample-rate :nfft nfft)))))
 
 ;;; Finding Power Spectrum:
 (defun apply-power-spectrum (frame NFFT)
   "Computes the power spectrum of frames."
   (iter
     (for elt :in-sequence frame)
-    (collect (/ (expt elt 2) NFFT) result-type 'vector)))
+    (collect (the single-float (/ (expt elt 2) NFFT)) result-type 'vector)))
 
 
 (defun find-power-spectrum-audio (frames NFFT)

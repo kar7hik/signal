@@ -14,7 +14,7 @@
                 #:lparallel
                 #:cl-portaudio
                 #:vgplot
-                ;;#:bordeaux-fft
+                ;#:bordeaux-fft
                 #:eazy-gnuplot
                 #:napa-fft3
                 #:array-operations
